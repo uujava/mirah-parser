@@ -16,6 +16,7 @@
 package mirahparser.lang.ast
 
 import java.util.Collections
+import java.util.List
 
 interface FormalArgument < Named do
   def name:Identifier; end
@@ -85,7 +86,17 @@ class MethodDefinition < NodeImpl
     child_list body: Node
     child_list annotations: Annotation
     child_list modifiers: Modifier
+    child java_doc: Node
     # exceptions
+  end
+
+
+  def initialize(p:Position, name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
+    initialize(p, name, arguments, type, body, annotations, [], Node(nil))
+  end
+
+  def initialize(name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
+      initialize(name, arguments, type, body, annotations, [], Node(nil))
   end
 
 end
@@ -93,8 +104,23 @@ end
 class StaticMethodDefinition < MethodDefinition
   init_subclass(MethodDefinition)
 
+  def initialize(p:Position, name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
+    initialize(p, name, arguments, type, body, annotations, [], Node(nil))
+  end
+
+  def initialize(name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
+      initialize(name, arguments, type, body, annotations, [], Node(nil))
+  end
 end
 
 class ConstructorDefinition < MethodDefinition
   init_subclass(MethodDefinition)
+
+  def initialize(p:Position, name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
+    initialize(p, name, arguments, type, body, annotations, [], Node(nil))
+  end
+
+  def initialize(name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
+      initialize(name, arguments, type, body, annotations, [], Node(nil))
+  end
 end

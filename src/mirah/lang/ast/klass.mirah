@@ -12,17 +12,42 @@ class ClassDefinition < NodeImpl
     child_list interfaces: TypeName
     child_list annotations: Annotation
     child_list modifiers: Modifier
+    child java_doc: Node
+  end
+
+  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
+    initialize(p, name, super_class, body, interfaces, annotations, [], Node(nil))
+  end
+
+  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
+      initialize(name, super_class, body, interfaces, annotations, [], Node(nil))
   end
 
 end
 
 class InterfaceDeclaration < ClassDefinition
   init_subclass(ClassDefinition)
+
+  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
+    initialize(p, name, super_class, body, interfaces, annotations, [], Node(nil))
+  end
+
+  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
+      initialize(name, super_class, body, interfaces, annotations, [], Node(nil))
+  end
 end
 
 # Is this necessary?
 class ClosureDefinition < ClassDefinition
   init_subclass(ClassDefinition)
+
+  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
+    initialize(p, name, super_class, body, interfaces, annotations, [], Node(nil))
+  end
+
+  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
+    initialize(name, super_class, body, interfaces, annotations, [], Node(nil))
+  end
 end
 
 #
@@ -59,18 +84,24 @@ class FieldDeclaration < NodeImpl
 end
 
 class FieldAssign < NodeImpl
-  implements Annotated, Named, Assignment
+  implements Annotated, Named, Assignment, HasModifiers
   init_node do
     child name: Identifier
     child value: Node
     child_list annotations: Annotation
     attr_accessor isStatic: 'boolean'
+    child_list modifiers: Modifier
   end
 
   def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean)
-    initialize(position, name, Node(nil), annotations)
+    initialize(position, name, Node(nil), annotations, [])
     self.isStatic = isStatic
   end
+
+    def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean, modifiers:List)
+      initialize(position, name, Node(nil), annotations, modifiers)
+      self.isStatic = isStatic
+    end
 end
 
 class FieldAccess < NodeImpl
