@@ -25,6 +25,7 @@ import java.util.LinkedList
 import java.util.Collections
 import java.util.EnumSet
 import mmeta.BaseParser.Token
+import mmeta.SyntaxError
 import mirahparser.lang.ast.*
 import mirahparser.lang.ast.Position as IPosition
 import mirahparser.lang.ast.Float
@@ -726,7 +727,7 @@ parser MirahParser {
            | $GT {">"}
            | $GE {">="}
            | $LShift {"<<"}
-           | $LLShift {"<<<"}
+           | $RRShift {">>>"}
            | $RShift {">>"}
            | $Bang {"!"}
            | $NE {"!="}
@@ -764,7 +765,7 @@ parser MirahParser {
        ;
 
   $Returns[TypeName]
-  type: n=(identifier | cpath)
+  type: n=(cpath)
         ( $LBrack $RBrack {TypeRefImpl.new(TypeName(n).typeref.name, true, false, n.position)}
         | {TypeName(n)}
         );
@@ -997,7 +998,7 @@ parser MirahParser {
   }
 
   def getDiagnosticSource {
-	Object(@source)
+    Object(@source)
   }
 
   def self.readToString(stream:InputStream) {
@@ -1095,7 +1096,7 @@ parser MirahParser {
       begin
         String(@escape.parse(character, rule))
       rescue SyntaxError
-        raise syntaxError("valid escape", nil);
+        raise SyntaxError.new("valid escape", nil, _pos, _string, _list);
       end
     else
       character
@@ -1205,7 +1206,7 @@ parser MirahParser {
     begin
       Long.parseLong(string.replace('_', ''), radix)
     rescue NumberFormatException
-      raise syntaxError('valid number', nil)
+      raise SyntaxError.new('valid number', nil, _pos, _string, _list)
     end
   }
 
@@ -1279,10 +1280,10 @@ parser MirahParser {
   }
 
   def verify_columns(_start:Object, _end:Object) {
-    start_pos = Position(_start)
-    end_pos = Position(_end)
-    if end_pos.col != start_pos.col
-      if start_of_line(start_pos) && start_of_line(end_pos)
+    if false # disable veriy_columns for the time being, as it is incompatible with "quote do\n  class Foo\n    def bar; end\n  end\nend", as the inner class statement is converted to "class Foo\n    def bar; end\n  end" and the spaces "  " before "class" are missing then. 
+      start_pos = Position(_start)
+      end_pos = Position(_end)
+      if (end_pos.col != start_pos.col) && (end_pos.line != start_pos.line) # either one line "def ...; ...; end" or multiline, but correct column is required in multiline variant
         warn("Misaligned end", "closes block", start_pos.pos)
       end
     end

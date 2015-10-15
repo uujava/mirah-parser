@@ -59,3 +59,11 @@ end
 class Modifier < NodeImpl
     init_literal String
 end
+
+class SyntheticLambdaDefinition < NodeImpl
+  init_node do
+    child supertype: TypeName # the supertype or superinterface the class generated for this block is to inherit
+    child block:     Block
+  end
+end
+

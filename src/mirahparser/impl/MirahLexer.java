@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 
 import mmeta.BaseParser;
 import mmeta.BaseParser.Token;
+import mmeta.SyntaxError;
 
 public class MirahLexer {
 
@@ -203,14 +204,20 @@ public class MirahLexer {
           if (isEscape(i)) {
             return Tokens.tEscape;
           }
+        break;
+        case '\n':
+          l.noteNewline();
       }
-      readRestOfString(i);
+      readRestOfString(l, i);
       return Tokens.tStringContent;
     }
 
-    private void readRestOfString(Input i) {
+    private void readRestOfString(MirahLexer l, Input i) {
       int c = 0;
       for (c = i.read(); c != EOF;c = i.read()) {
+        if (c == '\n') {
+          l.noteNewline();
+        }
         if (c == '\'') {
           i.backup(1);
           break;
@@ -248,8 +255,12 @@ public class MirahLexer {
             return Tokens.tStrEvBegin;
           }
           i.backup(1);
+        break;
+        case '\n':
+          l.noteNewline();
+        break;
       }
-      readRestOfString(i);
+      readRestOfString(l, i);
       return Tokens.tStringContent;
     }
     public Tokens readEndOfString(Input i) {
@@ -284,7 +295,7 @@ public class MirahLexer {
       }
     }
 
-    private void readRestOfString(Input i) {
+    private void readRestOfString(MirahLexer l, Input i) {
       int c = 0;
       for (c = i.read(); c != EOF; c = i.read()) {
         if (isEndOfString(c)) {
@@ -301,6 +312,8 @@ public class MirahLexer {
         } else if (c == '\\') {
           i.backup(1);
           break;
+        } else if (c == '\n') {
+          l.noteNewline();
         }
       }
       if ( c == EOF ){
@@ -809,8 +822,6 @@ public class MirahLexer {
           if (i.consume('<')) {
             if (i.consume('=')) {
               type = Tokens.tOpAssign;
-            } else {
-              type = Tokens.tLLShift;
             }
           } else if (i.consume('=')) {
             type = Tokens.tOpAssign;
@@ -828,7 +839,11 @@ public class MirahLexer {
           if (i.consume('=')) {
             type = Tokens.tOpAssign;
           } else {
-            type = Tokens.tRShift;
+              if(i.consume('>')) {
+                  type = Tokens.tRRShift;
+              }else {
+                  type = Tokens.tRShift;
+              }
           }
         } else {
           type = Tokens.tGT;
@@ -1334,7 +1349,7 @@ public class MirahLexer {
     if (parser == null) {
       return Tokens.tPartialComment;
     } else {
-      throw parser.syntaxError("*/", null);
+      throw new SyntaxError("terminated comment", "*/", parser._pos, parser._string, parser._list);
     }
   }
 

@@ -117,7 +117,7 @@ public enum Tokens {
   tEEQ,
   tEEEQ,
   tLShift,
-  tLLShift,
+  tRRShift,
   tRShift,
   tEQ,
   tAndEq,
