@@ -23,10 +23,26 @@ class ClassDefinition < NodeImpl
       initialize(name, super_class, body, interfaces, annotations, [], Node(nil))
   end
 
+  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
+    initialize(p, name, super_class, body, interfaces, annotations, modifiers, Node(nil))
+  end
+
+  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
+      initialize(name, super_class, body, interfaces, annotations, modifiers, Node(nil))
+  end
+
 end
 
 class InterfaceDeclaration < ClassDefinition
   init_subclass(ClassDefinition)
+
+  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
+    initialize(p, name, super_class, body, interfaces, annotations, modifiers, Node(nil))
+  end
+
+  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
+      initialize(name, super_class, body, interfaces, annotations, modifiers, Node(nil))
+  end
 
   def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
     initialize(p, name, super_class, body, interfaces, annotations, [], Node(nil))
@@ -40,6 +56,14 @@ end
 # Is this necessary?
 class ClosureDefinition < ClassDefinition
   init_subclass(ClassDefinition)
+
+  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
+    initialize(p, name, super_class, body, interfaces, annotations, modifiers, Node(nil))
+  end
+
+  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
+    initialize(name, super_class, body, interfaces, annotations, modifiers, Node(nil))
+  end
 
   def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
     initialize(p, name, super_class, body, interfaces, annotations, [], Node(nil))
@@ -73,13 +97,13 @@ class FieldAnnotationRequest < NodeImpl
 end
 
 class FieldDeclaration < NodeImpl
-  implements Annotated, Named
+  implements Annotated, Named, HasModifiers
   init_node do
     child name: Identifier
     child type: TypeName
-    child value: Node
     child_list annotations: Annotation
     attr_accessor isStatic: 'boolean'
+    child_list modifiers: Modifier
   end
 end
 
@@ -98,10 +122,11 @@ class FieldAssign < NodeImpl
     self.isStatic = isStatic
   end
 
-    def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean, modifiers:List)
-      initialize(position, name, Node(nil), annotations, modifiers)
-      self.isStatic = isStatic
-    end
+  def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean, modifiers:List)
+    initialize(position, name, Node(nil), annotations, modifiers)
+    self.isStatic = isStatic
+  end
+    
 end
 
 class FieldAccess < NodeImpl
@@ -146,12 +171,18 @@ class Colon3 < Constant
 end
 
 class ConstantAssign < NodeImpl
-  implements Annotated, Named, Assignment
+  implements Annotated, Named, Assignment, HasModifiers
   init_node do
     child name: Identifier
     child value: Node
     child_list annotations: Annotation
+    child_list modifiers: Modifier
   end
+
+  def initialize(position:Position, name:Identifier, value: Node, annotations:List)
+    initialize(position, name, value, annotations, [])
+  end
+
 end
 
 class AttrAssign < NodeImpl

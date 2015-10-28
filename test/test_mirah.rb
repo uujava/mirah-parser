@@ -96,6 +96,20 @@ class TestParsing < Test::Unit::TestCase
     result
   end
 
+  def parse(text, debug=false, &block)
+    @count ||= 0
+    filename = "#{self.class.name}-#{@count += 1}"
+    mirah_parser = MirahParser.new
+    if @parser_options
+        mirah_parser.instance_eval &@parser_options
+    end
+    yield mirah_parser if block_given?
+    MirahParser.tracing = debug
+    result = mirah_parser.parse(StringCodeSource.new(filename, text))
+    puts BaseParser.print_r(result) if debug
+    result
+  end
+
   def assert_parse(expected, text, debug=false)
     ast = parse(text, debug)
     str = AstPrinter.new.scan(ast, ast)
@@ -401,6 +415,11 @@ EOF
                  "abstract def +; 1; end")
     assert_parse("[Script, [[StaticMethodDefinition, [SimpleString, puts], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList], [ModifierList, [Modifier:FINAL], [Modifier:PROTECTED]], null]]]",
                  "final protected def self.puts; end")
+    assert_parse("[Script, [[StaticMethodDefinition, [SimpleString, puts], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList], [ModifierList, [Modifier:FINAL], [Modifier:SYNCHRONIZED]], null]]]",
+                 "final synchronized def self.puts; end")
+    assert_parse("[Script, [[ConstantAssign, [SimpleString, A], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList, [Modifier:FINAL]]]]]", "final A = b")
+    assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList, [Modifier:PROTECTED]]]]]", "protected @a = b")
+    assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList, [Modifier:FINAL], [Modifier:TRANSIENT]], static]]]", "final transient @@a = b")
     assert_fails("abstract")
     assert_fails("def abstract;end")
     assert_fails("self.abstract")
@@ -605,7 +624,7 @@ EOF
 
   def test_lhs
     assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [VCall, [SimpleString, b]]]]]", "a = b")
-    assert_parse("[Script, [[ConstantAssign, [SimpleString, A], [VCall, [SimpleString, b]], [AnnotationList]]]]", "A = b")
+    assert_parse("[Script, [[ConstantAssign, [SimpleString, A], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList]]]]", "A = b")
     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList]]]]", "@a = b")
     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList], static]]]", "@@a = b")
     assert_parse("[Script, [[ElemAssign, [VCall, [SimpleString, a]], [[Fixnum, 0]], [VCall, [SimpleString, b]]]]]", "a[0] = b")
@@ -1049,4 +1068,24 @@ EOF
                  '/** jdoc */ macro def a;end'
     end
   end
+
+  def test_java_doc
+    with_options do
+      parser_options do
+        skip_java_doc false
+      end
+
+      assert_parse "[Script, [[MethodDefinition, [SimpleString, a], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList], [ModifierList], [JavaDoc]]]]",
+                   '/** jdoc */ def a;end'
+      assert_parse "[Script, [[MethodDefinition, [SimpleString, a], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList, [Annotation, [Constant, [SimpleString, Anno]], [HashEntryList]]], [ModifierList], [JavaDoc]]]]",
+                   "/** jdoc */ $Anno\n def a;end"
+      assert_parse "[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [], [TypeNameList], [AnnotationList], [ModifierList], [JavaDoc]]]]",
+                   "/** jdoc */ \nclass a;end"
+      assert_parse "[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [], [TypeNameList], [AnnotationList, [Annotation, [Constant, [SimpleString, Anno]], [HashEntryList]]], [ModifierList], [JavaDoc]]]]",
+                   "/** jdoc */\n $Anno \n class a;end"
+      assert_parse "[Script, [[MacroDefinition, [SimpleString, a], null, [], [AnnotationList], [JavaDoc]]]]",
+                   '/** jdoc */ macro def a;end'
+    end
+  end
+
 end

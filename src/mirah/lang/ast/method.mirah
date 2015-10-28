@@ -90,6 +90,14 @@ class MethodDefinition < NodeImpl
     # exceptions
   end
 
+  def initialize(p:Position, name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List, modifiers:List)
+    initialize(p, name, arguments, type, body, annotations, modifiers, Node(nil))
+  end
+
+  def initialize(name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List, modifiers:List)
+      initialize(name, arguments, type, body, annotations, modifiers, Node(nil))
+  end
+
 
   def initialize(p:Position, name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
     initialize(p, name, arguments, type, body, annotations, [], Node(nil))
@@ -111,6 +119,13 @@ class StaticMethodDefinition < MethodDefinition
   def initialize(name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
       initialize(name, arguments, type, body, annotations, [], Node(nil))
   end
+  def initialize(p:Position, name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List, modifiers:List)
+    initialize(p, name, arguments, type, body, annotations, modifiers, Node(nil))
+  end
+
+  def initialize(name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List, modifiers:List)
+      initialize(name, arguments, type, body, annotations, modifiers, Node(nil))
+  end
 end
 
 class ConstructorDefinition < MethodDefinition
@@ -122,5 +137,13 @@ class ConstructorDefinition < MethodDefinition
 
   def initialize(name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List)
       initialize(name, arguments, type, body, annotations, [], Node(nil))
+  end
+
+  def initialize(p:Position, name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List, modifiers:List)
+    initialize(p, name, arguments, type, body, annotations, modifiers, Node(nil))
+  end
+
+  def initialize(name: Identifier, arguments: Arguments, type:TypeName, body: List, annotations: List, modifiers:List)
+      initialize(name, arguments, type, body, annotations, modifiers, Node(nil))
   end
 end

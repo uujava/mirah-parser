@@ -213,8 +213,8 @@ parser MirahParser {
           | ($Def)=> primary2_def
           | ($Macro|$Defmacro)=> primary2_macro
           | ($Dollar)=> (primary2_class | primary2_interface | primary2_def | primary2_macro)
-          | (acc_modifier)=> (primary2_class | primary2_interface | primary2_def | primary2_macro)
           | (java_doc) => (primary2_class | primary2_interface | primary2_def | primary2_macro)
+          | (acc_modifier)=> (primary2_class | primary2_interface | primary2_def | primary2_macro)
           | ($Break)=> primary2_break
           | ($Next)=> primary2_next
           | ($Redo)=> primary2_redo
@@ -302,8 +302,8 @@ parser MirahParser {
   $Returns[Node]
   primary2_class
          : jdoc = java_doc?
-		   annotations=annotation_list
-		   m=acc_modifier_list
+           annotations=annotation_list
+           m=acc_modifier_list
            t=$Class sp=block_start(t)!
            ( $LShift! BEG e=$Self
              term! b=compstmt! verify_end(sp)! $End
@@ -320,7 +320,7 @@ parser MirahParser {
   $Returns[Node]
   primary2_interface
          : jdoc = java_doc?
-		   annotations=annotation_list
+           annotations=annotation_list
            t=$Interface!
            sp=block_start(t)
            n=cname! ifaces=($LT! rlistOf(:cpath)
@@ -367,8 +367,8 @@ parser MirahParser {
   $Returns[Node]
   primary2_def
          : jdoc = java_doc?
-		   annotations=annotation_list
-		   m=acc_modifier_list
+           annotations=annotation_list
+           m=acc_modifier_list
            t=$Def s=block_start(t)!
            ( $Self! dot_or_colon! name=fname!
              arglist=f_arglist! body=bodystmt! verify_end(s)! $End
@@ -663,7 +663,7 @@ parser MirahParser {
              m=acc_modifier_list
              ( ($ClassVar|$ClassVarBacktick)=> n=cvar -> ^(FieldAssign n annotations true m)
              | ($InstVar|$InstVarBacktick)=> n=ivar -> ^(FieldAssign n annotations false m)
-             | ($CONSTANT)=> n=constant -> ^(ConstantAssign n nil annotations)
+             | ($CONSTANT)=> n=constant -> ^(ConstantAssign n nil annotations m)
              )
            )
          | ($IDENTIFIER)=> n=identifier -> ^(LocalAssignment n nil)
