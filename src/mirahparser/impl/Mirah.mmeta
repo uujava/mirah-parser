@@ -726,7 +726,7 @@ parser MirahParser {
               -> ^(Modifier txt);
 
   $Returns[List]
-  acc_modifier_list: (a=acc_modifier {a})*;
+  acc_modifier_list: (a=acc_modifier opt_nl {a})*;
 
   $Returns[Node]
   java_doc: txt = (s = $JavaDoc opt_nl {Token(s).text}) -> ^(JavaDoc txt);
