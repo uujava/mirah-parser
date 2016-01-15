@@ -284,6 +284,13 @@ end
 
 class ErrorNode < NodeImpl
   init_node
+
+  attr_accessor message:String
+
+  def initialize(position:Position, message:String)
+    super(position)
+    @message = message
+  end
 end
 
 class TypeRefImpl < NodeImpl implements TypeRef, TypeName
