@@ -82,37 +82,45 @@ class TestParsing < Test::Unit::TestCase
     alias exitFieldAssign exitFieldAccess
   end
 
-  def parse(text, debug=false, &block)
+  class PositionalAstPrinter < AstPrinter
+    def enterDefault(node, arg)
+      super
+      @out << '(' << node.position.startLine.to_s << ":" << node.position.startColumn.to_s << ',' << node.position.endLine.to_s << ":" << node.position.endColumn.to_s << ')'
+      true
+    end
+  end
+
+  def parse(text, &block)
     @count ||= 0
     filename = "#{self.class.name}-#{@count += 1}"
     mirah_parser = MirahParser.new
     if @parser_options
         mirah_parser.instance_eval &@parser_options
     end
-    yield mirah_parser if block_given?
-    MirahParser.tracing = debug
-    result = mirah_parser.parse(StringCodeSource.new(filename, text))
-    puts BaseParser.print_r(result) if debug
-    result
-  end
-
-  def parse(text, debug=false, &block)
-    @count ||= 0
-    filename = "#{self.class.name}-#{@count += 1}"
-    mirah_parser = MirahParser.new
-    if @parser_options
-        mirah_parser.instance_eval &@parser_options
+    # default base parser options
+    BaseParser.module_eval do
+      self.tracing = false
+      self.debug_parse_tree = false
+    end
+    if @base_parser_options
+      # custom base parser options
+      BaseParser.module_eval &@base_parser_options
     end
     yield mirah_parser if block_given?
-    MirahParser.tracing = debug
     result = mirah_parser.parse(StringCodeSource.new(filename, text))
-    puts BaseParser.print_r(result) if debug
+    puts BaseParser.print_r(result) if BaseParser.tracing
     result
   end
 
-  def assert_parse(expected, text, debug=false)
-    ast = parse(text, debug)
+  def assert_parse(expected, text)
+    ast = parse(text)
     str = AstPrinter.new.scan(ast, ast)
+    assert_equal(expected, str, "expected '#{text}' to be converted")
+  end
+
+  def assert_positional(expected, text)
+    ast = parse(text)
+    str = PositionalAstPrinter.new.scan(ast, ast)
     assert_equal(expected, str, "expected '#{text}' to be converted")
   end
 
@@ -120,9 +128,13 @@ class TestParsing < Test::Unit::TestCase
     @parser_options = block
   end
 
+  def base_parser_options &block
+    @base_parser_options = block
+  end
   def with_options &block
     instance_eval &block
     @parser_options = nil
+    @base_parser_options = nil
   end
 
   def assert_fails(text)
@@ -426,15 +438,26 @@ EOF
   end
 
   def test_if
-    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 1]], []]]]", 'if a then 1 end')
-    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 1]], []]]]", 'if a;1;end')
-    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [], []]]]", 'if a;else;end')
-    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 1]], [[Fixnum, 2]]]]]", 'if a then 1 else 2 end')
+    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 1]], []]]]",
+                 'if a then 1 end')
+    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 1]], []]]]",
+                 'if a;1;end')
+    assert_positional("[Script(1:1,1:7), [[If(1:1,1:7), [VCall(1:6,1:7), [SimpleString(1:6,1:7), b]], [[VCall(1:1,1:2), [SimpleString(1:1,1:2), a]]], []]]]",
+                      'a if b')
+    assert_positional("[Script(1:1,1:37), [[FunctionalCall(1:1,1:37), [SimpleString(1:1,1:6), quote], [], [Block(1:7,1:37), null, [[If(1:9,1:36), [Call(1:23,1:36), [Unquote(1:23,1:28), [VCall(1:24,1:27), [SimpleString(1:24,1:27), bit]]], [SimpleString(1:29,1:36), hasNext], [], null], [[Call(1:9,1:19), [Unquote(1:9,1:14), [VCall(1:10,1:13), [SimpleString(1:10,1:13), bit]]], [SimpleString(1:15,1:19), next], [], null]], []]]]]]]",
+                 'quote { `bit`.next if `bit`.hasNext}')
+    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [], []]]]",
+                 'if a;else;end')
+    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 1]], [[Fixnum, 2]]]]]",
+                 'if a then 1 else 2 end')
     assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 1]], [[If, [VCall, [SimpleString, b]], [[Fixnum, 2]], [[Fixnum, 3]]]]]]]",
                  'if a; 1; elsif b; 2; else; 3; end')
-    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [], [[Fixnum, 1]]]]]", 'unless a then 1 end')
-    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [], [[Fixnum, 1]]]]]", 'unless a;1;end')
-    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 2]], [[Fixnum, 1]]]]]", 'unless a then 1 else 2 end')
+    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [], [[Fixnum, 1]]]]]",
+                 'unless a then 1 end')
+    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [], [[Fixnum, 1]]]]]",
+                 'unless a;1;end')
+    assert_parse("[Script, [[If, [VCall, [SimpleString, a]], [[Fixnum, 2]], [[Fixnum, 1]]]]]",
+                 'unless a then 1 else 2 end')
     assert_fails("if;end")
     assert_fails("if a then 1 else 2 elsif b then 3 end")
     assert_fails("if a;elsif end")
@@ -593,8 +616,8 @@ EOF
     # assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [[VCall, [SimpleString, a]], [Splat, [VCall, [SimpleString, b]]], [Hash, [HashEntry, [SimpleString, c], [VCall, [SimpleString, d]]]]], null]]]", 'foo(a, *b, c:d)')
     # assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [[VCall, [SimpleString, a]], [Splat, [VCall, [SimpleString, b]]], [Hash, [HashEntry, [SimpleString, c], [VCall, [SimpleString, d]]]]], null]]]", 'foo(a, *b, :c => d)')
     # assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [[VCall, [SimpleString, a]], [Splat, [VCall, [SimpleString, b]]], [Hash, [HashEntry, [SimpleString, c], [VCall, [SimpleString, d]]]], [BlockPass, [VCall, [SimpleString, e]]]], null]]]", 'foo(a, *b, c:d, &e)')
-    assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [[Hash, [HashEntry, [SimpleString, c], [VCall, [SimpleString, d]]]]], null]]]", 'foo(c:d)')
-    assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [[Hash, [HashEntry, [SimpleString, c], [VCall, [SimpleString, d]]]], [BlockPass, [VCall, [SimpleString, e]]]], null]]]", 'foo(c:d, &e)')
+    assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [[Hash, [HashEntry, [SimpleString, c], [VCall, [SimpleString, d]]]]], null]]]", 'foo(c: d)')
+    assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [[Hash, [HashEntry, [SimpleString, c], [VCall, [SimpleString, d]]]], [BlockPass, [VCall, [SimpleString, e]]]], null]]]", 'foo(c: d, &e)')
     assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [[BlockPass, [VCall, [SimpleString, e]]]], null]]]", 'foo(&e)')
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, foo], [], null]]]", 'a.foo')
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, foo], [], null]]]", 'a.foo()')
@@ -1090,4 +1113,39 @@ EOF
     end
   end
 
+  def test_cast
+    assert_parse "[Script, [[Cast, [Constant, [SimpleString, A]], [FieldAccess, [SimpleString, x]]]]]",
+                 '@x:A'
+    assert_parse "[Script, [[FieldAssign, [SimpleString, x], [Cast, [Constant, [SimpleString, A]], [FieldAccess, [SimpleString, y]]], [AnnotationList], [ModifierList]]]]",
+                 '@x=@y:A'
+    assert_parse "[Script, [[Cast, [Constant, [SimpleString, int]], [FunctionalCall, [SimpleString, int], [], null]]]]",
+                 'int():int'
+    assert_parse "[Script, [[LocalAssignment, [SimpleString, x], [Call, [[Cast, [Constant, [SimpleString, int]], [FunctionalCall, [SimpleString, int], [], null]]], [SimpleString, y], [], null]]]]",
+                 'x = (int():int).y'
+     assert_parse "[Script, [[Cast, [Constant, [SimpleString, int]], [If, [VCall, [SimpleString, a]], [[VCall, [SimpleString, b]]], []]]]]",
+                'if a;b;end:int'
+     assert_parse "[Script, [[Cast, [Colon2, [Constant, [SimpleString, mmeta]], [Constant, [SimpleString, BaseParser]]], [If, [VCall, [SimpleString, a]], [[VCall, [SimpleString, b]]], []]]]]",
+                  'if a;b;end:mmeta::BaseParser'
+    assert_parse "[Script, [[Cast, [Constant, [SimpleString, int]], [Constant, [SimpleString, X]]]]]",
+                 'X:int'
+    assert_parse "[Script, [[Cast, [Constant, [SimpleString, int]], [VCall, [SimpleString, x]]]]]",
+                 'x:int'
+    assert_parse "[Script, [[Call, [Cast, [Constant, [SimpleString, int]], [VCall, [SimpleString, x]]], [SimpleString, y], [], null]]]",
+                 'x:int.y'
+    assert_parse "[Script, [[Call, [Cast, [Constant, [SimpleString, int]], [FunctionalCall, [SimpleString, x], [[VCall, [SimpleString, b]]], null]], [SimpleString, y], [], null]]]",
+                   'x(b):int.y'
+    assert_parse "[Script, [[Call, [Cast, [Constant, [SimpleString, A]], [VCall, [SimpleString, x]]], [SimpleString, y], [[Cast, [Constant, [SimpleString, B]], [VCall, [SimpleString, c]]]], null]]]",
+                 'x:A.y c:B'
+    assert_parse "[Script, [[Call, [Cast, [Constant, [SimpleString, A]], [VCall, [SimpleString, x]]], [SimpleString, y], [[Cast, [Constant, [SimpleString, B]], [VCall, [SimpleString, c]]]], null]]]",
+                 'x:A.y(c:B)'
+    assert_parse "[Script, [[Cast, [Constant, [SimpleString, B]], [Call, [Cast, [Constant, [SimpleString, A]], [VCall, [SimpleString, x]]], [SimpleString, y], [], null]]]]",
+                 'x:A.y():B'
+    assert_parse "[Script, [[Cast, [Constant, [SimpleString, B]], [Call, [VCall, [SimpleString, x]], [SimpleString, y], [], null]]]]",
+                 'x.y:B'
+    assert_parse "[Script, [[Cast, [Constant, [SimpleString, B]], [Call, [Cast, [Constant, [SimpleString, A]], [VCall, [SimpleString, x]]], [SimpleString, y], [], null]]]]",
+                 'x:A.y:B'
+    assert_parse "[Script, [[Cast, [Constant, [SimpleString, B]], [Call, [Cast, [Constant, [SimpleString, A]], [VCall, [SimpleString, x]]], [SimpleString, y], [], null]]]]",
+                 'x:A = y'
+
+  end
 end
