@@ -115,18 +115,24 @@ class FieldAssign < NodeImpl
     child_list annotations: Annotation
     attr_accessor isStatic: 'boolean'
     child_list modifiers: Modifier
+    child type_hint: TypeName
   end
 
   def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean)
-    initialize(position, name, Node(nil), annotations, [])
+    initialize(position, name, Node(nil), annotations, [], nil)
     self.isStatic = isStatic
   end
 
   def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean, modifiers:List)
-    initialize(position, name, Node(nil), annotations, modifiers)
+    initialize(position, name, Node(nil), annotations, modifiers, nil)
     self.isStatic = isStatic
   end
-    
+
+  def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean, modifiers:List, type_hint: TypeName)
+    initialize(position, name, Node(nil), annotations, modifiers, type_hint)
+    self.isStatic = isStatic
+  end
+
 end
 
 class FieldAccess < NodeImpl
@@ -177,10 +183,11 @@ class ConstantAssign < NodeImpl
     child value: Node
     child_list annotations: Annotation
     child_list modifiers: Modifier
+    child type_hint: TypeName
   end
 
   def initialize(position:Position, name:Identifier, value: Node, annotations:List)
-    initialize(position, name, value, annotations, [])
+    initialize(position, name, value, annotations, [], nil)
   end
 
 end

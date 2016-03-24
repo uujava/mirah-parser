@@ -153,7 +153,7 @@ parser MirahParser {
         )* {a};
 
   make_or(a:Node, b:Node): t={makeIdentifier(a.position, temp(:or))}
-    ->^(NodeList [^(LocalAssignment t a), ^(If ^(LocalAccess clone(t)) [^(LocalAccess clone(t))] [b])]);
+    ->^(NodeList [^(LocalAssignment t a nil), ^(If ^(LocalAccess clone(t)) [^(LocalAccess clone(t))] [b])]);
 
   # Node:command - fcall/call/yield/super [!null]
   $Memo[Node]
@@ -653,7 +653,7 @@ parser MirahParser {
   assignment_op: op_assign | $EQ opt_nl {makeIdentifier(makePosition(_start, _pos), "=")};
 
   $Memo[Assignment]
-  lhs: (($ClassVar|$InstVar|$CONSTANT|$IDENTIFIER) $EQ)=> var_lhs
+  lhs: (($ClassVar|$InstVar|$CONSTANT|$IDENTIFIER) cast_type? $EQ)=> var_lhs
        | ($Dollar|$Backtick|$ClassVarBacktick|$InstVarBacktick|acc_modifier)=> (var_lhs | lhs2)
        | lhs2;
   $Returns[Assignment]
@@ -661,17 +661,16 @@ parser MirahParser {
                                       -> ^(ElemAssign t k nil)
                          | dot_or_colons (n=identifier -> ^(AttrAssign t n nil))
                          );
-
   $Returns[Assignment]
   var_lhs: ( annotations=annotation_list
              m=acc_modifier_list
-             ( ($ClassVar|$ClassVarBacktick)=> n=cvar -> ^(FieldAssign n annotations true m)
-             | ($InstVar|$InstVarBacktick)=> n=ivar -> ^(FieldAssign n annotations false m)
-             | ($CONSTANT)=> n=constant -> ^(ConstantAssign n nil annotations m)
+             ( ($ClassVar|$ClassVarBacktick) => n=cvar th=cast_type?-> ^(FieldAssign n annotations true m th)
+             | ($InstVar|$InstVarBacktick) => n=ivar th=cast_type?-> ^(FieldAssign n annotations false m th)
+             | ($CONSTANT)=> n=constant  th=cast_type? -> ^(ConstantAssign n nil annotations m th)
              )
            )
-         | ($IDENTIFIER)=> n=identifier -> ^(LocalAssignment n nil)
-         | ($Backtick)=> u=unquote -> ^(UnquoteAssign u nil)
+         | ($IDENTIFIER) => n=identifier th=cast_type? -> ^(LocalAssignment n nil th)
+         | ($Backtick)=> u=unquote-> ^(UnquoteAssign u nil)
          ;
 
   assoc: a=arg_value $Rocket! opt_nl BEG b=arg_value -> ^(HashEntry a b)
@@ -935,8 +934,8 @@ parser MirahParser {
   clone(node:Identifier): {node.clone};
 
   op_attr_assign(target:Node, attr:Identifier, args:List, op:Identifier, value:Node)
-               : temp={makeIdentifier(target.position, self.temp)}
-                 target2=-> ^(LocalAssignment temp target)
+               : temp={makeIdentifier(target.position, self.temp)} th=cast_type?
+                 target2=-> ^(LocalAssignment temp target th)
                  args2=save_temps(args)
                  fetch=-> ^(Call ^(LocalAccess clone(temp)) attr get_temps(args2) nil)
                  assign=op_attr_assignment(temp, attr, args2, value)
@@ -964,7 +963,7 @@ parser MirahParser {
       ;
 
   assign_temp(value:Node): temp={makeIdentifier(value.position, self.temp)}
-                           -> ^(LocalAssignment temp value);
+                           -> ^(LocalAssignment temp value nil);
 
   block_start(token:Token) : {pos(token.startpos)};
   verify_end(start:Position) : ( t=&$End {verify_columns(start, pos(t.startpos));nil}
