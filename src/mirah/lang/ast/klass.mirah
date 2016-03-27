@@ -119,13 +119,11 @@ class FieldAssign < NodeImpl
   end
 
   def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean)
-    initialize(position, name, Node(nil), annotations, [], nil)
-    self.isStatic = isStatic
+    initialize(position, name, annotations, isStatic, [])
   end
 
   def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean, modifiers:List)
-    initialize(position, name, Node(nil), annotations, modifiers, nil)
-    self.isStatic = isStatic
+    initialize(position, name, annotations, isStatic, modifiers, nil)
   end
 
   def initialize(position:Position, name:Identifier, annotations:List, isStatic:boolean, modifiers:List, type_hint: TypeName)
@@ -190,6 +188,9 @@ class ConstantAssign < NodeImpl
     initialize(position, name, value, annotations, [], nil)
   end
 
+  def initialize(name:Identifier, value:Node, annotations:List)
+    initialize(name.position, name, value, annotations)
+  end
 end
 
 class AttrAssign < NodeImpl

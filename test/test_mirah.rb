@@ -115,11 +115,7 @@ class TestParsing < Test::Unit::TestCase
   def assert_parse(expected, text)
     ast = parse(text)
     str = AstPrinter.new.scan(ast, ast)
-    begin
     assert_equal(expected, str, "expected '#{text}' to be converted")
-    rescue Exception
-      puts "     assert_parse(\"#{str}\",\n                 \"#{text}\")"
-    end
   end
 
   def assert_positional(expected, text)
@@ -1085,25 +1081,6 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  "/** jdoc */\n $Anno \n class a;end"
     assert_parse "[Script, [[MacroDefinition, [SimpleString, a], null, [], [AnnotationList], [JavaDoc]]]]",
                  '/** jdoc */ macro def a;end'
-    end
-  end
-
-  def test_java_doc
-    with_options do
-      parser_options do
-        skip_java_doc false
-      end
-
-      assert_parse "[Script, [[MethodDefinition, [SimpleString, a], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList], [ModifierList], [JavaDoc]]]]",
-                   '/** jdoc */ def a;end'
-      assert_parse "[Script, [[MethodDefinition, [SimpleString, a], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList, [Annotation, [Constant, [SimpleString, Anno]], [HashEntryList]]], [ModifierList], [JavaDoc]]]]",
-                   "/** jdoc */ $Anno\n def a;end"
-      assert_parse "[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [], [TypeNameList], [AnnotationList], [ModifierList], [JavaDoc]]]]",
-                   "/** jdoc */ \nclass a;end"
-      assert_parse "[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [], [TypeNameList], [AnnotationList, [Annotation, [Constant, [SimpleString, Anno]], [HashEntryList]]], [ModifierList], [JavaDoc]]]]",
-                   "/** jdoc */\n $Anno \n class a;end"
-      assert_parse "[Script, [[MacroDefinition, [SimpleString, a], null, [], [AnnotationList], [JavaDoc]]]]",
-                   '/** jdoc */ macro def a;end'
     end
   end
 
