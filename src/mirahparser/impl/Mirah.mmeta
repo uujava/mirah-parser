@@ -656,10 +656,12 @@ parser MirahParser {
   lhs: (($ClassVar|$InstVar|$CONSTANT|$IDENTIFIER) cast_type? $EQ)=> var_lhs
        | ($Dollar|$Backtick|$ClassVarBacktick|$InstVarBacktick|acc_modifier)=> (var_lhs | lhs2)
        | lhs2;
+       
   $Returns[Assignment]
   lhs2: t=value(primary) (($LBrack)=> tok=$LBrack opt_nl k=call_args? opt_nl $RBrack
                                       -> ^(ElemAssign t k nil)
-                         | dot_or_colons (n=identifier -> ^(AttrAssign t n nil))
+                         | dot_or_colons (n=identifier 
+                                      -> ^(AttrAssign t n nil))
                          );
   $Returns[Assignment]
   var_lhs: ( annotations=annotation_list
