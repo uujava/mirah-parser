@@ -1035,18 +1035,20 @@ parser MirahParser {
   }
 
   def self.parse_args(args:String[]) {
-    argc = args.length
     source = CodeSource(nil)
-    if args[0].equals "-v"
-      BaseParser.tracing = true
-      argc -= 1
-    elsif args[0].equals "--tree"
-      BaseParser.debug_parse_tree = true
-      argc -= 1
-    elsif args[0].equals "-e"
-      source = StringCodeSource.new("-e", args[1])
+    args.length.times do |i|
+      if args[i].equals "-v"
+        puts "tracing on"
+        BaseParser.tracing = true
+      elsif args[i].equals "--tree"
+        puts "debug_parse_tree on"
+        BaseParser.debug_parse_tree = true
+      elsif args[i].equals "-e"
+        source = StringCodeSource.new("-e", args[i+1])
+      end
     end
-    source ||= if argc > 0
+
+    source ||= if args.length > 0
       filename = args[args.length - 1]
       StreamCodeSource.new(filename)
     else
