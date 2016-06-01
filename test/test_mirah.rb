@@ -755,6 +755,14 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
      assert_parse("[Script, [[Call, [Super, [[VCall, [SimpleString, a]]], [Block, null, [[VCall, [SimpleString, b]]]]], [SimpleString, c], [], null]]]", "super a do;b;end.c")
      assert_parse("[Script, [[FunctionalCall, [SimpleString, do_call], [[FunctionalCall, [SimpleString, curly_call], [], [Block, null, [[VCall, [SimpleString, curlyblock]]]]]], [Block, null, [[VCall, [SimpleString, doblock]]]]]]]",
                   "do_call curly_call {curlyblock} do;doblock;end")
+     assert_parse("[Script, [[FunctionalCall, [SimpleString, a_call], [[FunctionalCall, [SimpleString, an_arg], [], [Block, null, [[VCall, [SimpleString, curlyblock]]]]]], null]]]",
+                  "a_call an_arg { curlyblock }")
+     assert_parse("[Script, [[FunctionalCall, [SimpleString, a_call], [[VCall, [SimpleString, an_arg]]], [Block, null, [[VCall, [SimpleString, do_block]]]]]]]",
+                  "a_call an_arg do; do_block; end")
+     assert_parse("[Script, [[Call, [Constant, [SimpleString, A]], [SimpleString, call], [[FunctionalCall, [SimpleString, an_arg], [], [Block, null, [[VCall, [SimpleString, curlyblock]]]]]], null]]]",
+                  "A.call an_arg {curlyblock}")
+     #assert_parse("[Script, [[Call, [Constant, [SimpleString, A]], [SimpleString, call], [[VCall, [SimpleString, an_arg]]], [Block, null, [[VCall, [SimpleString, do_block]]]]]], null]]]",
+     #             "A.call an_arg do; do_block; end")
    end
 
    def test_opt_nl
