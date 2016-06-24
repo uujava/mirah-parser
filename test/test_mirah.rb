@@ -10,6 +10,7 @@ class TestParsing < Test::Unit::TestCase
   java_import 'mirahparser.lang.ast.NodeScanner'
   java_import 'mirahparser.lang.ast.Modifier'
   java_import 'mirahparser.lang.ast.StringCodeSource'
+  java_import 'mirahparser.lang.ast.AnnotationList'
 
   class AstPrinter < NodeScanner
     def initialize
@@ -20,6 +21,13 @@ class TestParsing < Test::Unit::TestCase
       @out << ", null"
     end
     def enterDefault(node, arg)
+
+      if node.kind_of?(AnnotationList) and node.size == 0
+        # do not log empty annotations
+        @first = false
+        return false
+      end
+
       @out << ", " unless @first
       @first = false
       if node.kind_of? Modifier
@@ -39,7 +47,11 @@ class TestParsing < Test::Unit::TestCase
 
     def exitDefault(node, arg)
       @first = false
-      @out << "]"
+      if node.kind_of?(AnnotationList) and node.size == 0
+        # do not log empty annotations
+      else
+        @out << "]"
+      end
     end
     %w(Boolean Fixnum Float CharLiteral SimpleString SimpleString).each do |name|
       eval(<<-EOF)
@@ -412,31 +424,31 @@ EOF
     assert_parse("[Script, [[Not, []]]]", '!()')
     assert_parse("[Script, [[Not, [[Boolean, true]]]]]", '!(true)')
     assert_parse("[Script, [[ClassAppendSelf, [[Fixnum, 1]]]]]", 'class << self;1;end')
-    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [[Fixnum, 1]], [TypeNameList], [AnnotationList], [ModifierList], null]]]", 'class A;1;end')
-    # assert_parse("[Script, [[ClassDefinition, [Colon2, [Constant, [SimpleString, A]], [Constant, [SimpleString, B]]], [Fixnum, 1], [TypeNameList], [AnnotationList], [ModifierList], null]]]", 'class A::B;1;end')
-    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], [Constant, [SimpleString, B]], [[Fixnum, 1]], [TypeNameList], [AnnotationList], [ModifierList], null]]]", 'class A < B;1;end')
+    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [[Fixnum, 1]], [TypeNameList], [ModifierList], null]]]", 'class A;1;end')
+    # assert_parse("[Script, [[ClassDefinition, [Colon2, [Constant, [SimpleString, A]], [Constant, [SimpleString, B]]], [Fixnum, 1], [TypeNameList], [ModifierList], null]]]", 'class A::B;1;end')
+    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], [Constant, [SimpleString, B]], [[Fixnum, 1]], [TypeNameList], [ModifierList], null]]]", 'class A < B;1;end')
     assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [], [Block, null, [[VCall, [SimpleString, x]]]]]]]", "foo do;x;end")
     assert_parse("[Script, [[FunctionalCall, [SimpleString, foo], [], [Block, null, [[VCall, [SimpleString, y]]]]]]]", "foo {y}")
     assert_parse("[Script, [[FunctionalCall, [SimpleString, foo?], [], [Block, null, [[VCall, [SimpleString, z]]]]]]]", "foo? {z}")
-    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [[Fixnum, 1]], [TypeNameList], [AnnotationList], [ModifierList], null]]]", 'class a;1;end')
+    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [[Fixnum, 1]], [TypeNameList], [ModifierList], null]]]", 'class a;1;end')
   end
 
   def test_modifiers
     assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [], [TypeNameList], [AnnotationList, [Annotation, [Constant, [SimpleString, T]], [HashEntryList]]], [ModifierList, [Modifier:ABSTRACT]], null]]]", "$T\nabstract class A;end")
-    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [], [TypeNameList], [AnnotationList], [ModifierList, [Modifier:ABSTRACT]], null]]]", "abstract class A;end")
-    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [], [TypeNameList], [AnnotationList], [ModifierList, [Modifier:ABSTRACT], [Modifier:PRIVATE]], null]]]", "abstract private class A;end")
-    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [], [TypeNameList], [AnnotationList], [ModifierList, [Modifier:FINAL], [Modifier:ABSTRACT], [Modifier:PRIVATE]], null]]]", "final abstract private class A;end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, +], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList, [Modifier:ABSTRACT]], null]]]",
+    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [], [TypeNameList], [ModifierList, [Modifier:ABSTRACT]], null]]]", "abstract class A;end")
+    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [], [TypeNameList], [ModifierList, [Modifier:ABSTRACT], [Modifier:PRIVATE]], null]]]", "abstract private class A;end")
+    assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], null, [], [TypeNameList], [ModifierList, [Modifier:FINAL], [Modifier:ABSTRACT], [Modifier:PRIVATE]], null]]]", "final abstract private class A;end")
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, +], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList, [Modifier:ABSTRACT]], null]]]",
                  "abstract def +; 1; end")
-    assert_parse("[Script, [[StaticMethodDefinition, [SimpleString, puts], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList], [ModifierList, [Modifier:FINAL], [Modifier:PROTECTED]], null]]]",
+    assert_parse("[Script, [[StaticMethodDefinition, [SimpleString, puts], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [ModifierList, [Modifier:FINAL], [Modifier:PROTECTED]], null]]]",
                  "final protected def self.puts; end")
-    assert_parse("[Script, [[StaticMethodDefinition, [SimpleString, puts], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList], [ModifierList, [Modifier:FINAL], [Modifier:SYNCHRONIZED]], null]]]",
+    assert_parse("[Script, [[StaticMethodDefinition, [SimpleString, puts], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [ModifierList, [Modifier:FINAL], [Modifier:SYNCHRONIZED]], null]]]",
                  "final synchronized def self.puts; end")
-    assert_parse("[Script, [[ConstantAssign, [SimpleString, A], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList, [Modifier:FINAL]], null]]]",
+    assert_parse("[Script, [[ConstantAssign, [SimpleString, A], [VCall, [SimpleString, b]], [ModifierList, [Modifier:FINAL]], null]]]",
                  "final A = b")
-     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList, [Modifier:PROTECTED]], null]]]",
+     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [ModifierList, [Modifier:PROTECTED]], null]]]",
                  "protected @a = b")
-     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList, [Modifier:FINAL], [Modifier:TRANSIENT]], null, static]]]",
+     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [ModifierList, [Modifier:FINAL], [Modifier:TRANSIENT]], null, static]]]",
                  "final transient @@a = b")
     assert_fails("abstract")
     assert_fails("def abstract;end")
@@ -552,60 +564,60 @@ EOF
     names = %w(foo bar? baz! def= rescue Class & | ^ < > + - * / % ! ~ <=> ==
                === =~ !~ <= >= << >>> >> != ** []= [] +@ -@)
     names.each do |name|
-      assert_parse("[Script, [[MethodDefinition, [SimpleString, #{name}], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+      assert_parse("[Script, [[MethodDefinition, [SimpleString, #{name}], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                    "def #{name}; 1; end")
-      assert_parse("[Script, [[StaticMethodDefinition, [SimpleString, #{name}], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+      assert_parse("[Script, [[StaticMethodDefinition, [SimpleString, #{name}], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                    "def self.#{name}; 1; end")
     end
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 2]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 2]], [ModifierList], null]]]",
                  "def foo(a); 2; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo a; 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [Constant, [SimpleString, String]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [Constant, [SimpleString, String]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a:String); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [Colon2, [Colon2, [Constant, [SimpleString, java]], [Constant, [SimpleString, lang]]], [Constant, [SimpleString, String]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [Colon2, [Colon2, [Constant, [SimpleString, java]], [Constant, [SimpleString, lang]]], [Constant, [SimpleString, String]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a:java.lang.String); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [Colon2, [Colon2, [Constant, [SimpleString, java]], [Constant, [SimpleString, lang]]], [Constant, [SimpleString, String]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [Colon2, [Colon2, [Constant, [SimpleString, java]], [Constant, [SimpleString, lang]]], [Constant, [SimpleString, String]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a:java::lang::String); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null], [RequiredArgument, [SimpleString, b], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null], [RequiredArgument, [SimpleString, b], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a, b); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, a], null, [Fixnum, 1]]], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, a], null, [Fixnum, 1]]], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a = 1); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, a], [Constant, [SimpleString, int]], [Fixnum, 1]]], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, a], [Constant, [SimpleString, int]], [Fixnum, 1]]], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a:int = 1); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, a], null, [Fixnum, 1]], [OptionalArgument, [SimpleString, b], null, [Fixnum, 2]]], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, a], null, [Fixnum, 1]], [OptionalArgument, [SimpleString, b], null, [Fixnum, 2]]], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a = 1, b=2); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, null, null], [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, null, null], [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(*); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, a], null], [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, a], null], [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(*a); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, a], [Constant, [SimpleString, Object]]], [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, a], [Constant, [SimpleString, Object]]], [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(*a:Object); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], [BlockArgument, [SimpleString, a], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], [BlockArgument, [SimpleString, a], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(&a); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], [BlockArgument, optional, [SimpleString, a], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], [BlockArgument, optional, [SimpleString, a], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(&a = nil); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], [RestArgument, [SimpleString, c], null], [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], [RestArgument, [SimpleString, c], null], [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a, b=1, *c, d, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], [RestArgument, [SimpleString, c], null], [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], [RestArgument, [SimpleString, c], null], [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a, *c, d, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], null, [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], null, [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a, b=1, d, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], [RestArgument, [SimpleString, c], null], [RequiredArgumentList], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], [RestArgument, [SimpleString, c], null], [RequiredArgumentList], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a, b=1, *c, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], [RestArgument, [SimpleString, c], null], [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], [RestArgument, [SimpleString, c], null], [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(b=1, *c, d, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], null, [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], null, [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(b=1, d, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], [RestArgument, [SimpleString, c], null], [RequiredArgumentList], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], null, [Fixnum, 1]]], [RestArgument, [SimpleString, c], null], [RequiredArgumentList], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(b=1, *c, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, c], null], [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, c], null], [RequiredArgumentList, [RequiredArgument, [SimpleString, d], null]], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(*c, d, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, c], null], [RequiredArgumentList], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, c], null], [RequiredArgumentList], [BlockArgument, [SimpleString, e], null]], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(*c, &e); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], [Constant, [SimpleString, int]], [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], [Constant, [SimpleString, int]], [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(a):int; 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, bar], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], [Constant, [SimpleString, int]], [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, bar], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], [Constant, [SimpleString, int]], [[Fixnum, 1]], [ModifierList], null]]]",
                  "def bar:int; 1; end")
     assert_fails("def foo(*a, *b);end")
     assert_fails("def foo(&a, &b);end")
@@ -652,11 +664,11 @@ EOF
   def test_lhs
     assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [VCall, [SimpleString, b]], null]]]",
                  "a = b")
-     assert_parse("[Script, [[ConstantAssign, [SimpleString, A], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList], null]]]",
+     assert_parse("[Script, [[ConstantAssign, [SimpleString, A], [VCall, [SimpleString, b]], [ModifierList], null]]]",
                  "A = b")
-     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList], null]]]",
+     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [ModifierList], null]]]",
                  "@a = b")
-     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [AnnotationList], [ModifierList], null, static]]]",
+     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [VCall, [SimpleString, b]], [ModifierList], null, static]]]",
                  "@@a = b")
     assert_parse("[Script, [[ElemAssign, [VCall, [SimpleString, a]], [[Fixnum, 0]], [VCall, [SimpleString, b]]]]]", "a[0] = b")
     assert_parse("[Script, [[AttrAssign, [VCall, [SimpleString, a]], [SimpleString, foo], [VCall, [SimpleString, b]]]]]", "a.foo = b")
@@ -672,7 +684,7 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  "a &&= b")
      assert_parse("[Script, [[If, [LocalAccess, [SimpleString, a]], [[LocalAccess, [SimpleString, a]]], [[LocalAssignment, [SimpleString, a], [VCall, [SimpleString, b]], null]]]]]",
                  "a ||= b")
-     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [Call, [FieldAccess, [SimpleString, a]], [SimpleString, +], [[Fixnum, 1]], null], [AnnotationList], [ModifierList], null]]]",
+     assert_parse("[Script, [[FieldAssign, [SimpleString, a], [Call, [FieldAccess, [SimpleString, a]], [SimpleString, +], [[Fixnum, 1]], null], [ModifierList], null]]]",
                  "@a += 1")
      assert_parse("[Script, [[[LocalAssignment, [SimpleString, $ptemp$1], [VCall, [SimpleString, a]], null], [LocalAssignment, [SimpleString, $ptemp$2], [Fixnum, 1], null], [ElemAssign, [LocalAccess, [SimpleString, $ptemp$1]], [[LocalAccess, [SimpleString, $ptemp$2]]], [Call, [Call, [LocalAccess, [SimpleString, $ptemp$1]], [SimpleString, []], [[LocalAccess, [SimpleString, $ptemp$2]]], null], [SimpleString, -], [[Fixnum, 2]], null]]]]]",
                  "a[1] -= 2")
@@ -761,8 +773,8 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                   "a_call an_arg do; do_block; end")
      assert_parse("[Script, [[Call, [Constant, [SimpleString, A]], [SimpleString, call], [[FunctionalCall, [SimpleString, an_arg], [], [Block, null, [[VCall, [SimpleString, curlyblock]]]]]], null]]]",
                   "A.call an_arg {curlyblock}")
-     #assert_parse("[Script, [[Call, [Constant, [SimpleString, A]], [SimpleString, call], [[VCall, [SimpleString, an_arg]]], [Block, null, [[VCall, [SimpleString, do_block]]]]]], null]]]",
-     #             "A.call an_arg do; do_block; end")
+     # assert_parse("[Script, [[Call, [Constant, [SimpleString, A]], [SimpleString, call], [[VCall, [SimpleString, an_arg]]], [Block, null, [[VCall, [SimpleString, do_block]]]]]], null]]]",
+     #              "A.call an_arg do; do_block; end")
    end
 
    def test_opt_nl
@@ -784,26 +796,26 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
 
    def test_macros
      assert_parse("[Script, [[Unquote, [VCall, [SimpleString, x]]]]]", '`x`')
-     assert_parse("[Script, [[ClassDefinition, [Unquote, [Constant, [SimpleString, A]]], null, [[Fixnum, 1]], [TypeNameList], [AnnotationList], [ModifierList], null]]]", 'class `A`;1;end')
-     assert_parse("[Script, [[MethodDefinition, [Unquote, [VCall, [SimpleString, foo]]], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+     assert_parse("[Script, [[ClassDefinition, [Unquote, [Constant, [SimpleString, A]]], null, [[Fixnum, 1]], [TypeNameList], [ModifierList], null]]]", 'class `A`;1;end')
+     assert_parse("[Script, [[MethodDefinition, [Unquote, [VCall, [SimpleString, foo]]], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                   "def `foo`(a); 1; end")
-    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [Unquote, [VCall, [SimpleString, a]]], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [Unquote, [VCall, [SimpleString, a]]], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                  "def foo(`a`); 1; end")
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [Unquote, [VCall, [SimpleString, foo]]], [], null]]]", 'a.`foo`')
     assert_parse("[Script, [[Call, [Self], [Unquote, [VCall, [SimpleString, foo]]], [], null]]]", 'self.`foo`')
     assert_parse("[Script, [[FieldAccess, [Unquote, [VCall, [SimpleString, a]]]]]]", "@`a`")
-     assert_parse("[Script, [[FieldAssign, [Unquote, [VCall, [SimpleString, a]]], [Fixnum, 1], [AnnotationList], [ModifierList], null]]]",
+     assert_parse("[Script, [[FieldAssign, [Unquote, [VCall, [SimpleString, a]]], [Fixnum, 1], [ModifierList], null]]]",
                   "@`a` = 1")
     assert_parse("[Script, [[UnquoteAssign, [Unquote, [VCall, [SimpleString, a]]], [VCall, [SimpleString, b]]]]]", "`a` = b")
     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null," +
-                                               " [[FunctionalCall, [SimpleString, quote], [], [Block, null, [[VCall, [SimpleString, bar]]]]]], [AnnotationList], null]]]",
+                                               " [[FunctionalCall, [SimpleString, quote], [], [Block, null, [[VCall, [SimpleString, bar]]]]]], null]]]",
                  "macro def foo; quote {bar}; end")
     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null," +
-                                               " [[FunctionalCall, [SimpleString, quote], [], [Block, null, [[VCall, [SimpleString, bar]]]]]], [AnnotationList], null]]]",
+                                               " [[FunctionalCall, [SimpleString, quote], [], [Block, null, [[VCall, [SimpleString, bar]]]]]], null]]]",
                  "macro def foo; quote do bar end; end")
     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null," +
                                                " [[VCall, [SimpleString, bar]]," +
-                                                      " [FunctionalCall, [SimpleString, quote], [], [Block, null, [[VCall, [SimpleString, baz]]]]]], [AnnotationList], null]]]",
+                                                      " [FunctionalCall, [SimpleString, quote], [], [Block, null, [[VCall, [SimpleString, baz]]]]]], null]]]",
                  "macro def foo; bar; quote do baz end; end")
    end
 
@@ -816,7 +828,24 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
      assert_parse("[Script, [[FieldAssign, [SimpleString, a], [Fixnum, 1], [AnnotationList, [Annotation, [Constant, [SimpleString, Foo]], [HashEntryList, [HashEntry, [SimpleString, value], [Array, [[Constant, [SimpleString, Bar]], [Constant, [SimpleString, Baz]]]]]]]], [ModifierList], null]]]", "$Foo[Bar, Baz] @a = 1")
    end
 
-   def test_return
+  def test_param_annotation
+    assert_parse('[Script, [[MethodDefinition, [SimpleString, method], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [Constant, [SimpleString, int]], [AnnotationList, [Annotation, [Constant, [SimpleString, Foo]], [HashEntryList]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [ModifierList], null]]]',
+                 'def method($Foo a:int);end')
+    assert_parse('[Script, [[MethodDefinition, [SimpleString, method], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null, [AnnotationList, [Annotation, [Constant, [SimpleString, Foo]], [HashEntryList, [HashEntry, [SimpleString, value], [Array, [[Constant, [SimpleString, Bar]], [Constant, [SimpleString, Baz]]]]]]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [ModifierList], null]]]',
+                 'def method($Foo[Bar, Baz] a);end')
+    assert_parse('[Script, [[MethodDefinition, [SimpleString, method], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null], [RequiredArgument, [SimpleString, b], [Constant, [SimpleString, int]], [AnnotationList, [Annotation, [Constant, [SimpleString, Foo]], [HashEntryList, [HashEntry, [SimpleString, foo], [Constant, [SimpleString, Bar]]]]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [ModifierList], null]]]',
+                 'def method(a, $Foo[foo: Bar] b:int);end')
+    assert_parse('[Script, [[MethodDefinition, [SimpleString, method], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null], [RequiredArgument, [SimpleString, b], [Constant, [SimpleString, int]], [AnnotationList, [Annotation, [Constant, [SimpleString, Foo]], [HashEntryList]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], [Constant, [SimpleString, void]], [], [ModifierList], null]]]',
+                 'def method(a, $Foo b:int):void;end')
+    assert_parse('[Script, [[MethodDefinition, [SimpleString, method], [Arguments, [RequiredArgumentList], [OptionalArgumentList], [RestArgument, [SimpleString, a], [Constant, [SimpleString, int]], [AnnotationList, [Annotation, [Colon2, [Constant, [SimpleString, foo]], [Constant, [SimpleString, Bar]]], [HashEntryList]]]], [RequiredArgumentList], null], null, [], [ModifierList], null]]]',
+                 'def method($foo.Bar *a:int);end')
+    assert_parse('[Script, [[MethodDefinition, [SimpleString, method], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null, [AnnotationList, [Annotation, [Constant, [SimpleString, Bar]], [HashEntryList]]]]], [OptionalArgumentList, [OptionalArgument, [SimpleString, b], [Constant, [SimpleString, int]], [Fixnum, 0], [AnnotationList, [Annotation, [Constant, [SimpleString, Baz]], [HashEntryList]]]]], null, [RequiredArgumentList], null], null, [], [ModifierList], null]]]',
+                 'def method($Bar a, $Baz b:int = 0);end')
+    assert_parse('[Script, [[MacroDefinition, [SimpleString, method], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null, [AnnotationList, [Annotation, [Colon2, [Constant, [SimpleString, foo]], [Constant, [SimpleString, Bar]]], [HashEntryList]]]]], [OptionalArgumentList], null, [RequiredArgumentList], null], [], null]]]',
+                 'macro def method($foo::Bar a);end')
+  end
+
+  def test_return
      assert_parse("[Script, [[Return, [Fixnum, -1]]]]", "return -1")
      assert_parse("[Script, [[Return, [[Fixnum, -1]]]]]", "return (-1)")
      assert_parse("[Script, [[Return, [ImplicitNil]]]]", "return")
@@ -845,13 +874,13 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
    end
 
    def test_enddef
-     assert_parse("[Script, [[If, [Fixnum, 1], [[Fixnum, 2]], []], [MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+     assert_parse("[Script, [[If, [Fixnum, 1], [[Fixnum, 2]], []], [MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                   "if 1 then 2; end
                   def foo; 1; end")
    end
 
    def test_array_type
-     assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [TypeRefImpl, String, array]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [AnnotationList], [ModifierList], null]]]",
+     assert_parse("[Script, [[MethodDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], [TypeRefImpl, String, array]]], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [[Fixnum, 1]], [ModifierList], null]]]",
                   "def foo(a:String[]); 1; end")
    end
 
@@ -859,13 +888,12 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
      assert_parse("[Script, [[InterfaceDeclaration, " +
                              "[Constant, [SimpleString, A]], null, " +
                              "[[Fixnum, 1]], " +
-                             "[TypeNameList], [AnnotationList], [ModifierList], null]]]",
+                             "[TypeNameList], [ModifierList], null]]]",
                   "interface A;1;end")
      assert_parse("[Script, [[InterfaceDeclaration, " +
                              "[Constant, [SimpleString, A]], null, " +
                              "[[Fixnum, 1]], " +
-                             "[TypeNameList, [Constant, [SimpleString, B]], [Constant, [SimpleString, C]]], " +
-                             "[AnnotationList], [ModifierList], null]]]",
+                             "[TypeNameList, [Constant, [SimpleString, B]], [Constant, [SimpleString, C]]], [ModifierList], null]]]",
                   "interface A < B, C do 1;end")
      assert_parse("[Script, [[InterfaceDeclaration, " +
                              "[Constant, [SimpleString, A]], null, [], " +
@@ -898,13 +926,13 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
    end
 
    def test_macro
-     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null, [[Fixnum, 1]], [AnnotationList], null]]]",
+     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null, [[Fixnum, 1]], null]]]",
                   "defmacro foo; 1; end")
-     # assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null, [[Fixnum, 1]], [AnnotationList]]]]",
+     # assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null, [[Fixnum, 1]]]]]",
      #              "defmacro foo do; 1; end")
-     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null, [[Fixnum, 1]], [AnnotationList], null]]]",
+     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], null, [[Fixnum, 1]], null]]]",
                   "macro def foo; 1; end")
-     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], [[Fixnum, 2]], [AnnotationList], null]]]",
+     assert_parse("[Script, [[MacroDefinition, [SimpleString, foo], [Arguments, [RequiredArgumentList, [RequiredArgument, [SimpleString, a], null]], [OptionalArgumentList], null, [RequiredArgumentList], null], [[Fixnum, 2]], null]]]",
                   "macro def foo(a); 2; end")
    end
    
@@ -975,7 +1003,7 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
    end
 
    def test_implements
-     assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], [Constant, [SimpleString, B]], [[Fixnum, 1]], [TypeNameList, [Constant, [SimpleString, Bar]]], [AnnotationList], [ModifierList], null]]]",
+     assert_parse("[Script, [[ClassDefinition, [Constant, [SimpleString, A]], [Constant, [SimpleString, B]], [[Fixnum, 1]], [TypeNameList, [Constant, [SimpleString, Bar]]], [ModifierList], null]]]",
                   "class A < B\n#foo\nimplements Bar;1;end")
    end
 
@@ -1082,15 +1110,15 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
         skip_java_doc false
       end
 
-    assert_parse "[Script, [[MethodDefinition, [SimpleString, a], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList], [ModifierList], [JavaDoc]]]]",
+    assert_parse "[Script, [[MethodDefinition, [SimpleString, a], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [ModifierList], [JavaDoc]]]]",
                  '/** jdoc */ def a;end'
     assert_parse "[Script, [[MethodDefinition, [SimpleString, a], [Arguments, [RequiredArgumentList], [OptionalArgumentList], null, [RequiredArgumentList], null], null, [], [AnnotationList, [Annotation, [Constant, [SimpleString, Anno]], [HashEntryList]]], [ModifierList], [JavaDoc]]]]",
                  "/** jdoc */ $Anno\n def a;end"
-    assert_parse "[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [], [TypeNameList], [AnnotationList], [ModifierList], [JavaDoc]]]]",
+    assert_parse "[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [], [TypeNameList], [ModifierList], [JavaDoc]]]]",
                  "/** jdoc */ \nclass a;end"
     assert_parse "[Script, [[ClassDefinition, [Constant, [SimpleString, a]], null, [], [TypeNameList], [AnnotationList, [Annotation, [Constant, [SimpleString, Anno]], [HashEntryList]]], [ModifierList], [JavaDoc]]]]",
                  "/** jdoc */\n $Anno \n class a;end"
-    assert_parse "[Script, [[MacroDefinition, [SimpleString, a], null, [], [AnnotationList], [JavaDoc]]]]",
+    assert_parse "[Script, [[MacroDefinition, [SimpleString, a], null, [], [JavaDoc]]]]",
                  '/** jdoc */ macro def a;end'
     end
   end
@@ -1098,7 +1126,7 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
   def test_cast
     assert_parse "[Script, [[Cast, [Constant, [SimpleString, A]], [FieldAccess, [SimpleString, x]]]]]",
                  '@x:A'
-    assert_parse("[Script, [[FieldAssign, [SimpleString, x], [Cast, [Constant, [SimpleString, A]], [FieldAccess, [SimpleString, y]]], [AnnotationList], [ModifierList], null]]]",
+    assert_parse("[Script, [[FieldAssign, [SimpleString, x], [Cast, [Constant, [SimpleString, A]], [FieldAccess, [SimpleString, y]]], [ModifierList], null]]]",
                  "@x=@y:A")
     assert_parse "[Script, [[Cast, [Constant, [SimpleString, int]], [FunctionalCall, [SimpleString, int], [], null]]]]",
                  'int():int'
@@ -1145,11 +1173,11 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
   def test_lhs_cast
     assert_parse("[Script, [[LocalAssignment, [SimpleString, x], [VCall, [SimpleString, y]], [Constant, [SimpleString, A]]]]]",
                  "x:A = y")
-    assert_parse("[Script, [[FieldAssign, [SimpleString, x], [VCall, [SimpleString, y]], [AnnotationList], [ModifierList], [Constant, [SimpleString, A]], static]]]",
+    assert_parse("[Script, [[FieldAssign, [SimpleString, x], [VCall, [SimpleString, y]], [ModifierList], [Constant, [SimpleString, A]], static]]]",
                  "@@x:A = y")
-    assert_parse("[Script, [[ConstantAssign, [SimpleString, C], [Cast, [Constant, [SimpleString, B]], [Call, [Cast, [Constant, [SimpleString, A]], [VCall, [SimpleString, y]]], [SimpleString, z], [], null]], [AnnotationList], [ModifierList], [Constant, [SimpleString, A]]]]]",
+    assert_parse("[Script, [[ConstantAssign, [SimpleString, C], [Cast, [Constant, [SimpleString, B]], [Call, [Cast, [Constant, [SimpleString, A]], [VCall, [SimpleString, y]]], [SimpleString, z], [], null]], [ModifierList], [Constant, [SimpleString, A]]]]]",
                  "C:A = y:A.z:B")
-    assert_parse("[Script, [[FieldAssign, [SimpleString, x], [Hash, [HashEntry, [SimpleString, a], [Fixnum, 1]]], [AnnotationList], [ModifierList], [Constant, [SimpleString, A]]]]]",
+    assert_parse("[Script, [[FieldAssign, [SimpleString, x], [Hash, [HashEntry, [SimpleString, a], [Fixnum, 1]]], [ModifierList], [Constant, [SimpleString, A]]]]]",
                  "@x:A = {a: 1}")
     assert_parse("[Script, [[LocalAssignment, [SimpleString, x], [If, [VCall, [SimpleString, a]], [[VCall, [SimpleString, b]]], []], [Constant, [SimpleString, int]]]]]",
                  "x:int = if a;b;end")

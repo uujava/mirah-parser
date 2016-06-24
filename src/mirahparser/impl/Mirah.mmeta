@@ -47,15 +47,20 @@ public class FArglistReturn {
 }
 
 public class FNormArgReturn {
-  def initialize(name:Identifier)
+  def initialize(name:Identifier, annotations: List)
     @name = name
+    @annotations = annotations
   end
-  def initialize(name:Identifier, type:TypeName)
+
+  def initialize(name:Identifier, type:TypeName, annotations: List)
     @name = name
     @type = type
+    @annotations = annotations
   end
+
   def name; @name end
   def type; @type end
+  def annotations; @annotations end
 }
 
 parser MirahParser {
@@ -444,25 +449,28 @@ parser MirahParser {
 
   $Returns[FNormArgReturn]
   f_norm_arg: f_bad_arg
-            | l=label BEG t=type { FNormArgReturn.new(l, t) }
-            | u=unquote ($Colon BEG t=type)? { FNormArgReturn.new(u, t) }
-            | n=identifier { FNormArgReturn.new(n) };
+            | annotations=annotation_list l=label BEG t=type { FNormArgReturn.new(l, t, annotations) }
+            | annotations=annotation_list u=unquote ($Colon BEG t=type)? { FNormArgReturn.new(u, t, annotations) }
+            | annotations=annotation_list n=identifier { FNormArgReturn.new(n, annotations) };
 
   $Returns[RequiredArgument]
-  f_arg_item: ~f_opt n=f_norm_arg {name=n.name; type=n.type } -> ^(RequiredArgument name type);
+  f_arg_item: ~f_opt n=f_norm_arg {name=n.name; type=n.type; anno=n.annotations } -> ^(RequiredArgument name type anno);
             # | $LParen f_margs $RParen
 
   $Returns[List]
   f_arg: rlistOf(:f_arg_item);
 
   $Memo[OptionalArgument]
-  f_opt: n=f_norm_arg $EQ! opt_nl v=arg_value {name=n.name; type=n.type } -> ^(OptionalArgument name type v);
+  f_opt: n=f_norm_arg $EQ! opt_nl v=arg_value {name=n.name; type=n.type; anno=n.annotations } -> ^(OptionalArgument name type v anno);
 
   $Returns[List]
   f_optarg: rlistOf(:f_opt);
 
   $Returns[RestArgument]
-  f_rest_arg: $Star n=f_norm_arg {name=n.name; type=n.type } -> ^(RestArgument name type)
+  f_rest_arg: anno=annotation_list opt_nl $Star n=f_norm_arg {
+              name=n.name; type=n.type;
+              raise SyntaxError.new("annotation must be before star for rest argument annotation", nil, n.pos, _string, _line) if n.annotations.size > 0
+             } -> ^(RestArgument name type anno)
             | $Star -> ^(RestArgument nil nil);
 
   $Returns[BlockArgument]

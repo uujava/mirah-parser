@@ -44,28 +44,57 @@ class Arguments < NodeImpl
 end
 
 class RequiredArgument < NodeImpl
-  implements FormalArgument
+  implements FormalArgument, Annotated
   init_node do
     child name: Identifier
     child type: TypeName
+    child_list annotations: Annotation
   end
+
+  def initialize(p:Position, name: Identifier, type: TypeName)
+    initialize(p, name, type, List(nil))
+  end
+
+  def initialize(name: Identifier, type: TypeName)
+    initialize(name, type, List(nil))
+  end
+
 end
 
 class OptionalArgument < NodeImpl
-  implements FormalArgument
+  implements FormalArgument, Annotated
   init_node do
     child name: Identifier
     child type: TypeName
     child value: Node
+    child_list annotations: Annotation
   end
+
+  def initialize(p:Position, name: Identifier, type: TypeName, value:Node)
+    initialize(p, name, type, value, List(nil))
+  end
+
+  def initialize(name: Identifier, type: TypeName, value:Node)
+    initialize(name, type, value, List(nil))
+  end
+
 end
 
 class RestArgument < NodeImpl
-  implements FormalArgument
+  implements FormalArgument, Annotated
   init_node do
     child name: Identifier
     child type: TypeName
+    child_list annotations: Annotation
   end
+  def initialize(p:Position, name: Identifier, type: TypeName)
+    initialize(p, name, type, List(nil))
+  end
+
+  def initialize(name: Identifier, type: TypeName)
+    initialize(name, type, List(nil))
+  end
+
 end
 
 class BlockArgument < NodeImpl
