@@ -469,7 +469,7 @@ parser MirahParser {
   $Returns[RestArgument]
   f_rest_arg: anno=annotation_list opt_nl $Star n=f_norm_arg {
               name=n.name; type=n.type;
-              raise SyntaxError.new("annotation must be before star for rest argument annotation", nil, n.pos, _string, _line) if n.annotations.size > 0
+              raise SyntaxError.new("annotation must be before star for rest argument annotation", nil, _string, _line, pos()) if n.annotations.size > 0
              } -> ^(RestArgument name type anno)
             | $Star -> ^(RestArgument nil nil);
 
@@ -1139,7 +1139,7 @@ parser MirahParser {
       begin
         String(@escape.parse(character, rule))
       rescue SyntaxError
-        raise SyntaxError.new("valid escape", nil, _pos, _string, _list);
+        raise SyntaxError.new("valid escape", nil, _string, _list, pos());
       end
     else
       character
@@ -1249,7 +1249,7 @@ parser MirahParser {
     begin
       Long.parseLong(string.replace('_', ''), radix)
     rescue NumberFormatException
-      raise SyntaxError.new('valid number', nil, _pos, _string, _list)
+      raise SyntaxError.new('valid number', nil, _string, _list, pos())
     end
   }
 

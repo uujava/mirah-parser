@@ -1359,7 +1359,7 @@ public class MirahLexer {
     if (parser == null) {
       return Tokens.tPartialComment;
     } else {
-      throw new SyntaxError("terminated comment", "*/", parser._pos, parser._string, parser._list);
+      throw new SyntaxError("terminated comment", "*/", parser._string, parser._list, parser.pos());
     }
   }
 
