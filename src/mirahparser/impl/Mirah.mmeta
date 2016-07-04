@@ -579,9 +579,9 @@ parser MirahParser {
   $Returns[Node]
   arg9: a=arg10 t=(tok=($Star|$Slash|$Percent) op={makeIdentifier(tok)} opt_nl BEG b=arg10 a=-> ^(Call a op [b] nil))* {a};
   $Returns[Node]
-  arg10: tok=uminus BEG v=arg11 ( ?{v.kind_of?(Fixnum)} -> ^(Fixnum negateFixnum(v))
-                                | ?{v.kind_of?(Float)} -> ^(Float negateFloat(v))
-                                | op={makeIdentifier(makePosition(tok), "-@")} -> ^(Call v op [] nil)
+  arg10: tok=unary nosp BEG v=arg11 ( ?{v.kind_of?(Fixnum)} -> ^(Fixnum signedFixnum(tok.text, v))
+                                | ?{v.kind_of?(Float)} -> ^(Float signedFloat(tok.text, v))
+                                | op={makeIdentifier(makePosition(tok), "#{tok.text}@")} -> ^(Call v op [] nil)
                                 )
        | arg11;
   $Returns[Node]
@@ -590,7 +590,6 @@ parser MirahParser {
   $Returns[Node]
   arg12: tok=$Tilde opt_nl BEG v=arg12 -> ^(Call v makeIdentifier(tok) [] nil)
        | $Bang opt_nl BEG v=arg12 -> ^(Not v)
-       | tok=uplus BEG v=arg12 -> ^(Call v makeIdentifier(makePosition(tok), "+@") [] nil)
        | value(primary);
 
   arg_value: a=arg {checkExpression(a)};
@@ -630,12 +629,13 @@ parser MirahParser {
   isBEG2: ?{_pos == @BEG}
         | ?{Integer.valueOf(0).equals(col())}
         | ?{@begchars.indexOf(_rpeek) > 0};
+  isCOND: ?{@cond};
   COND: {@cond = true;nil};
   UNCOND: {@cond = false;nil};
 
   colon3: isBEG  tok=$Colons opt_nl {tok};
-  uminus: isBEG2 tok=$Minus  opt_nl {tok};
-  uplus:  isBEG2 tok=$Plus   opt_nl {tok};
+  unary:  isBEG2 tok=($Minus|$Plus) {tok} |
+          isCOND &sp tok=($Minus|$Plus) {tok};
 
   one_arg: v=arg_value ~$Rocket {v};
   args: l=rlistOf(:one_arg);
@@ -1314,12 +1314,20 @@ parser MirahParser {
     end
   }
 
-  def negateFixnum(f:Object) {
-    -Fixnum(f).value
+  def signedFixnum(sign:String, f:Object) {
+    if sign.equals('-')
+      -Fixnum(f).value
+    else
+      Fixnum(f).value
+    end
   }
 
-  def negateFloat(f:Object) {
-    -Float(f).value
+  def signedFloat(sign:String, f:Object) {
+    if sign.equals('-')
+      -Float(f).value
+    else
+      Float(f).value
+    end
   }
 
   def verify_columns(_start:Object, _end:Object) {

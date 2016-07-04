@@ -166,7 +166,7 @@ class TestParsing < Test::Unit::TestCase
     assert_parse("[Script, [[Fixnum, 15]]]", '0o17')
     assert_parse("[Script, [[Fixnum, 15]]]", '0b1111')
     assert_parse("[Script, [[Fixnum, 15]]]", '0d15')
-    assert_parse("[Script, [[Fixnum, -15]]]", '-15')
+    assert_parse('[Script, [[Fixnum, -15]]]', '-15')
     assert_parse("[Script, [[Fixnum, 2800088046]]]", '2800088046')
     assert_fails "0X"
     # assert_fails "0_"
@@ -643,7 +643,7 @@ EOF
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, call], [], null]]]", 'a.()')
     assert_parse("[Script, [[Call, [Constant, [SimpleString, System]], [SimpleString, in], [], null]]]", "System.in")
     assert_parse("[Script, [[Call, [Array, [[VCall, [SimpleString, la]], [VCall, [SimpleString, lb]]]], [SimpleString, each], [], null]]]", "[la, lb].each")
-    assert_parse("[Script, [[Call, [Constant, [SimpleString, TreeNode]], [SimpleString, bottomUpTree], [[Call, [Fixnum, 2], [SimpleString, *], [[VCall, [SimpleString, item]]], null], [Call, [VCall, [SimpleString, depth]], [SimpleString, -], [[Fixnum, 1]], null]], null]]]", "TreeNode.bottomUpTree(2*item, depth-1)")
+    assert_parse("[Script, [[Call, [Constant, [SimpleString, TreeNode]], [SimpleString, bottomUpTree], [[Call, [Fixnum, 2], [SimpleString, *], [[VCall, [SimpleString, item]]], null], [Call, [VCall, [SimpleString, depth]], [SimpleString, -], [[Fixnum, 1]], null]], null]]]", "TreeNode.bottomUpTree(2*item, depth - 1)")
     assert_parse("[Script, [[FunctionalCall, [SimpleString, iterate], [[Call, [VCall, [SimpleString, x]], [SimpleString, /], [[Float, 40.0]], null], [Call, [VCall, [SimpleString, y]], [SimpleString, /], [[Float, 40.0]], null]], null]]]", "iterate(x/40.0,y/40.0)")
     assert_parse("[Script, [[Super, [], null]]]", 'super()')
     assert_parse("[Script, [[ZSuper]]]", 'super')
@@ -846,8 +846,10 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
   end
 
   def test_return
-     assert_parse("[Script, [[Return, [Fixnum, -1]]]]", "return -1")
-     assert_parse("[Script, [[Return, [[Fixnum, -1]]]]]", "return (-1)")
+     assert_parse('[Script, [[Return, [Fixnum, -1]]]]',
+                  'return -1')
+     assert_parse('[Script, [[Return, [[Fixnum, -1]]]]]',
+                  'return (-1)')
      assert_parse("[Script, [[Return, [ImplicitNil]]]]", "return")
    end
 
@@ -1166,8 +1168,8 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
 
   def test_cast_pending
     # TODO why pend not working?!
-    #  assert_parse "[Script, [[Hash, [HashEntry, [SimpleString, a], [Call, [Cast, [Constant, [SimpleString, b]], [Call, [Constant, [SimpleString, A]], [SimpleString, x], [], null]], [SimpleString, y], [], null]]]]]",
-    #               '{a:A.x:b.y}'
+    #assert_parse "[Script, [[Hash, [HashEntry, [SimpleString, a], [Call, [Cast, [Constant, [SimpleString, b]], [Call, [Constant, [SimpleString, A]], [SimpleString, x], [], null]], [SimpleString, y], [], null]]]]]",
+    #               '{a:A.x: b.y}'
   end
 
   def test_lhs_cast
@@ -1181,5 +1183,48 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  "@x:A = {a: 1}")
     assert_parse("[Script, [[LocalAssignment, [SimpleString, x], [If, [VCall, [SimpleString, a]], [[VCall, [SimpleString, b]]], []], [Constant, [SimpleString, int]]]]]",
                  "x:int = if a;b;end")
+  end
+
+  # Test different cases a-1 => a(-1) vs a - 1 => a - 1
+  # a-1 => (local a minus 1) handled at compiler infer time
+  def test_unary_arguments
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, -], [[Fixnum, 1]], null]]]',
+                 'a-1')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, -], [[Fixnum, 1]], null]]]',
+                 'a - 1')
+    assert_parse('[Script, [[Call, [Call, [VCall, [SimpleString, a]], [SimpleString, a], [], null], [SimpleString, -], [[Fixnum, 1]], null]]]',
+                 'a.a -1')
+    assert_parse('[Script, [[Call, [Call, [VCall, [SimpleString, a]], [SimpleString, a], [], null], [SimpleString, -], [[Fixnum, 1]], null]]]',
+                 'a.a-1')
+    assert_parse('[Script, [[Call, [Call, [VCall, [SimpleString, a]], [SimpleString, a], [], null], [SimpleString, -], [[Fixnum, 1]], null]]]',
+                 'a.a - 1')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, -1], [Fixnum, 2], [Fixnum, 3]], null]]]',
+                 'a -1, 2, 3')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, a], [[Fixnum, 1], [Fixnum, -2], [Fixnum, 3]], null]]]',
+                 'a.a 1,-2, 3')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [VCall, [SimpleString, a]], [SimpleString, -@], [], null]], null]]]',
+                 'a(-a)')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, -], [[VCall, [SimpleString, a]]], null]]]',
+                 'a-a')
+    assert_parse('[Script, [[Call, [FieldAccess, [SimpleString, a]], [SimpleString, -@], [], null]]]',
+                 '-@a')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [FieldAccess, [SimpleString, a]], [SimpleString, -@], [], null]], null]]]',
+                 'a -@a')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [FieldAccess, [SimpleString, b]], [SimpleString, +@], [], null]], null]]]',
+                 'a +1,+@b')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Call, [VCall, [SimpleString, a]], [SimpleString, b], [], null], [SimpleString, -@], [], null]], null]]]',
+                 'a -a.b')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [VCall, [SimpleString, d]], [SimpleString, -], [[Fixnum, 2]], null], [Fixnum, 1]], null]]]',
+                 'a d-2, 1')
+    assert_parse('[Script, [[Call, [[Call, [VCall, [SimpleString, a]], [SimpleString, +], [[VCall, [SimpleString, b]]], null]], [SimpleString, -@], [], null]]]',
+                 '-(a + b)')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [VCall, [SimpleString, a]], [SimpleString, -], [[VCall, [SimpleString, b]]], null], [Fixnum, 2]], null]]]',
+                 'a 1, a-b,2')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Call, [VCall, [SimpleString, b]], [SimpleString, -@], [], null], [SimpleString, -], [[VCall, [SimpleString, c]]], null]], null]]]',
+                 'a -b-c')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [Call, [VCall, [SimpleString, a]], [SimpleString, b], [], null], [SimpleString, -], [[VCall, [SimpleString, b]]], null]], null]]]',
+                 'a(1, a.b - b)')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [Call, [VCall, [SimpleString, a]], [SimpleString, b], [], null], [SimpleString, -], [[VCall, [SimpleString, b]]], null]], null]]]',
+                 'a(1, a.b-b)')
   end
 end
