@@ -163,10 +163,12 @@ parser MirahParser {
   # Node:command - fcall/call/yield/super [!null]
   $Memo[Node]
   command: ($Super)=> $Super a=command_args -> ^(Super a nil)
-           | (op=operation a=command_args b=cmd_brace_block?-> ^(FunctionalCall op a b)
+           | op=operation a=command_args b=cmd_brace_block?-> ^(FunctionalCall op a b)
            | $Raise a=command_args -> ^(Raise a)
            | t=value(primary) dot_or_colons op=operation2 a=command_args b=cmd_brace_block?-> ^(Call t op a b)
-           );
+           | t=value(primary) ?{t.kind_of?(Call) and Call(t).parameters.size == 0} atgt={Call(t).target} aname={Call(t).name}  &sp u=($Plus|$Minus) nosp BEG ua=one_arg b=cmd_brace_block?
+                                                     -> ^(Call atgt aname [^(Call ua makeIdentifier(makePosition(u), "#{u.text}@") [] nil)] b)
+           ;
 
   # Node:command - call with or without block on end [!null]
   $Scope[@BEG]
@@ -579,10 +581,7 @@ parser MirahParser {
   $Returns[Node]
   arg9: a=arg10 t=(tok=($Star|$Slash|$Percent) op={makeIdentifier(tok)} opt_nl BEG b=arg10 a=-> ^(Call a op [b] nil))* {a};
   $Returns[Node]
-  arg10: tok=unary nosp BEG v=arg11 ( ?{v.kind_of?(Fixnum)} -> ^(Fixnum signedFixnum(tok.text, v))
-                                | ?{v.kind_of?(Float)} -> ^(Float signedFloat(tok.text, v))
-                                | op={makeIdentifier(makePosition(tok), "#{tok.text}@")} -> ^(Call v op [] nil)
-                                )
+  arg10: tok=unary nosp BEG v=arg11 op={makeIdentifier(makePosition(tok), "#{tok.text}@")} -> ^(Call v op [] nil)
        | arg11;
   $Returns[Node]
   arg11: a=arg12 tok=$Stars opt_nl BEG b=arg11 -> ^(Call a makeIdentifier(tok) [b] nil)
@@ -639,8 +638,6 @@ parser MirahParser {
 
   one_arg: v=arg_value ~$Rocket {v};
   args: l=rlistOf(:one_arg);
-      #  (comma s=splat {l+s} | { l })
-      #| splat;
 
   $Scope[@BEG]
   call_assocs: l=rlistOf(:assoc) -> ^(Hash l+);

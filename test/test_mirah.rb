@@ -166,7 +166,8 @@ class TestParsing < Test::Unit::TestCase
     assert_parse("[Script, [[Fixnum, 15]]]", '0o17')
     assert_parse("[Script, [[Fixnum, 15]]]", '0b1111')
     assert_parse("[Script, [[Fixnum, 15]]]", '0d15')
-    assert_parse('[Script, [[Fixnum, -15]]]', '-15')
+    assert_parse('[Script, [[Call, [Fixnum, 15], [SimpleString, -@], [], null]]]',
+                 '-15')
     assert_parse("[Script, [[Fixnum, 2800088046]]]", '2800088046')
     assert_fails "0X"
     # assert_fails "0_"
@@ -701,9 +702,12 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, -], [[VCall, [SimpleString, b]]], null]]]", "a - b")
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, *], [[VCall, [SimpleString, b]]], null]]]", "a * b")
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, *], [[VCall, [SimpleString, b]]], null]]]", "a*b")
-    assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, <], [[Fixnum, -1]], null]]]", "a < -1")
-    assert_parse("[Script, [[Fixnum, -1]]]", "-1")
-    assert_parse("[Script, [[Float, -1.0]]]", "-1.0")
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, <], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]], null]]]',
+                 'a < -1')
+    assert_parse('[Script, [[Call, [Fixnum, 1], [SimpleString, -@], [], null]]]',
+                 '-1')
+    assert_parse('[Script, [[Call, [Float, 1.0], [SimpleString, -@], [], null]]]',
+                 '-1.0')
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, -@], [], null]]]", "-a")
     assert_parse("[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, +@], [], null]]]", "+a")
 
@@ -846,9 +850,9 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
   end
 
   def test_return
-     assert_parse('[Script, [[Return, [Fixnum, -1]]]]',
+     assert_parse('[Script, [[Return, [Call, [Fixnum, 1], [SimpleString, -@], [], null]]]]',
                   'return -1')
-     assert_parse('[Script, [[Return, [[Fixnum, -1]]]]]',
+     assert_parse('[Script, [[Return, [[Call, [Fixnum, 1], [SimpleString, -@], [], null]]]]]',
                   'return (-1)')
      assert_parse("[Script, [[Return, [ImplicitNil]]]]", "return")
    end
@@ -1192,15 +1196,17 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  'a-1')
     assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, -], [[Fixnum, 1]], null]]]',
                  'a - 1')
-    assert_parse('[Script, [[Call, [Call, [VCall, [SimpleString, a]], [SimpleString, a], [], null], [SimpleString, -], [[Fixnum, 1]], null]]]',
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]], null]]]',
+                 'a -1')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, a], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]], null]]]',
                  'a.a -1')
     assert_parse('[Script, [[Call, [Call, [VCall, [SimpleString, a]], [SimpleString, a], [], null], [SimpleString, -], [[Fixnum, 1]], null]]]',
                  'a.a-1')
     assert_parse('[Script, [[Call, [Call, [VCall, [SimpleString, a]], [SimpleString, a], [], null], [SimpleString, -], [[Fixnum, 1]], null]]]',
                  'a.a - 1')
-    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, -1], [Fixnum, 2], [Fixnum, 3]], null]]]',
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Fixnum, 1], [SimpleString, -@], [], null], [Fixnum, 2], [Fixnum, 3]], null]]]',
                  'a -1, 2, 3')
-    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, a], [[Fixnum, 1], [Fixnum, -2], [Fixnum, 3]], null]]]',
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, a], [[Fixnum, 1], [Call, [Fixnum, 2], [SimpleString, -@], [], null], [Fixnum, 3]], null]]]',
                  'a.a 1,-2, 3')
     assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [VCall, [SimpleString, a]], [SimpleString, -@], [], null]], null]]]',
                  'a(-a)')
@@ -1210,7 +1216,7 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  '-@a')
     assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [FieldAccess, [SimpleString, a]], [SimpleString, -@], [], null]], null]]]',
                  'a -@a')
-    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [FieldAccess, [SimpleString, b]], [SimpleString, +@], [], null]], null]]]',
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Fixnum, 1], [SimpleString, +@], [], null], [Call, [FieldAccess, [SimpleString, b]], [SimpleString, +@], [], null]], null]]]',
                  'a +1,+@b')
     assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Call, [VCall, [SimpleString, a]], [SimpleString, b], [], null], [SimpleString, -@], [], null]], null]]]',
                  'a -a.b')
@@ -1226,5 +1232,11 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  'a(1, a.b - b)')
     assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [Call, [VCall, [SimpleString, a]], [SimpleString, b], [], null], [SimpleString, -], [[VCall, [SimpleString, b]]], null]], null]]]',
                  'a(1, a.b-b)')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]], [Block, null, []]]]]',
+                 'a -1 do;end')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]], [Block, null, []]]]]',
+                 'a -1 {}')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, a], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]], [Block, null, []]]]]',
+                 'a.a -1 {}')
   end
 end
