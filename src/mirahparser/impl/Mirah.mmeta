@@ -166,8 +166,8 @@ parser MirahParser {
            | op=operation a=command_args b=cmd_brace_block?-> ^(FunctionalCall op a b)
            | $Raise a=command_args -> ^(Raise a)
            | t=value(primary) dot_or_colons op=operation2 a=command_args b=cmd_brace_block?-> ^(Call t op a b)
-           | t=value(primary) ?{t.kind_of?(Call) and Call(t).parameters.size == 0} atgt={Call(t).target} aname={Call(t).name}  &sp u=($Plus|$Minus) nosp BEG ua=one_arg b=cmd_brace_block?
-                                                     -> ^(Call atgt aname [^(Call ua makeIdentifier(makePosition(u), "#{u.text}@") [] nil)] b)
+           | t=value(primary) ?{t.kind_of?(Call) and Call(t).parameters.size == 0} atgt={Call(t).target} aname={Call(t).name}  &sp u=($Plus|$Minus) nosp BEG ua=one_arg (comma next_args=args)? b=cmd_brace_block?
+                                                     -> ^(Call atgt aname make_unary_args(u, ua, next_args) b)
            ;
 
   # Node:command - call with or without block on end [!null]
@@ -1346,6 +1346,18 @@ parser MirahParser {
     end
     return true
   }
+
+  def make_unary_args(u:Token, ua:Node, op_args:List) {
+    pos = makePosition(u)
+    op = makeIdentifier(pos, "#{u.text}@")
+    u_arg = Call.new(pos, ua, op, [], nil)
+    all_args = [u_arg]
+    if op_args
+      all_args.addAll(op_args)
+    end
+    all_args
+  }
+
 }
 
 parser EscapeParser {
