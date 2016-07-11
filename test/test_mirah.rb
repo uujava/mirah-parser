@@ -1228,8 +1228,10 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  '-(a + b)')
     assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [VCall, [SimpleString, a]], [SimpleString, -], [[VCall, [SimpleString, b]]], null], [Fixnum, 2]], null]]]',
                  'a 1, a-b,2')
-    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Call, [VCall, [SimpleString, b]], [SimpleString, -@], [], null], [SimpleString, -], [[VCall, [SimpleString, c]]], null]], null]]]',
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Call, [Call, [VCall, [SimpleString, b]], [SimpleString, +], [[VCall, [SimpleString, c]]], null], [SimpleString, -@], [], null]], null]]]',
                  'a -b-c')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, b], [[Call, [Call, [VCall, [SimpleString, c]], [SimpleString, +], [[VCall, [SimpleString, d]]], null], [SimpleString, -@], [], null]], null]]]',
+                 'a.b -c-d')
     assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [Call, [VCall, [SimpleString, a]], [SimpleString, b], [], null], [SimpleString, -], [[VCall, [SimpleString, b]]], null]], null]]]',
                  'a(1, a.b - b)')
     assert_parse('[Script, [[FunctionalCall, [SimpleString, a], [[Fixnum, 1], [Call, [Call, [VCall, [SimpleString, a]], [SimpleString, b], [], null], [SimpleString, -], [[VCall, [SimpleString, b]]], null]], null]]]',
@@ -1240,5 +1242,7 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  'a -1 {}')
     assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, a], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]], [Block, null, []]]]]',
                  'a.a -1 {}')
+    assert_parse('[Script, [[Call, [Self], [SimpleString, a], [[Call, [Call, [VCall, [SimpleString, b]], [SimpleString, -], [[VCall, [SimpleString, c]]], null], [SimpleString, -@], [], null]], [Block, null, []]]]]',
+                 'self.a -b+c do;end')
   end
 end

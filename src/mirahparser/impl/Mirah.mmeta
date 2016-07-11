@@ -166,8 +166,8 @@ parser MirahParser {
            | op=operation a=command_args b=cmd_brace_block?-> ^(FunctionalCall op a b)
            | $Raise a=command_args -> ^(Raise a)
            | t=value(primary) dot_or_colons op=operation2 a=command_args b=cmd_brace_block?-> ^(Call t op a b)
-           | t=value(primary) ?{t.kind_of?(Call) and Call(t).parameters.size == 0} atgt={Call(t).target} aname={Call(t).name}  &sp u=($Plus|$Minus) nosp BEG ua=one_arg (comma next_args=args)? b=cmd_brace_block?
-                                                     -> ^(Call atgt aname make_unary_args(u, ua, next_args) b)
+           | t=value(primary) ?{t.kind_of?(Call) and Call(t).parameters.size == 0} atgt={Call(t).target} aname={Call(t).name}  a=command_args b=cmd_brace_block?
+                                                     -> ^(Call atgt aname a b)
            ;
 
   # Node:command - call with or without block on end [!null]
@@ -652,7 +652,10 @@ parser MirahParser {
              { l }
            | b=block_arg { [b] };
   $Scope[@cond]
-  command_args: ~($LParen) ~(nosp $Colon nosp) COND call_args;
+  command_args: ~($LParen) ~(nosp $Colon nosp) (
+               COND &sp u=($Plus|$Minus) nosp ua=one_arg (comma next_args=args)? {make_unary_args(u, ua, next_args) } |
+               COND call_args
+               );
 
   op_assign: t=$AndEq..$OpAssign opt_nl {makeIdentifier(t, 0, -1)};
   assignment_op: op_assign | $EQ opt_nl {makeIdentifier(makePosition(_start, _pos), "=")};
@@ -1349,7 +1352,20 @@ parser MirahParser {
 
   def make_unary_args(u:Token, ua:Node, op_args:List) {
     pos = makePosition(u)
-    op = makeIdentifier(pos, "#{u.text}@")
+    op_text = u.text
+    # handle operator precedence for -a-b and -a+b
+    if ua.kind_of? Call and op_text.equals '-'
+       ua_call = Call(ua)
+       ua_op = ua_call.name.identifier
+       if ua_op.equals '-'
+         # -a-b -> -@(a+b)
+         ua_call.name = SimpleString.new(ua_call.name.position, '+')
+       elsif ua_op.equals '+'
+         # -a+b -> -@(a-b)
+         ua_call.name = SimpleString.new(ua_call.name.position, '-')
+       end
+    end
+    op = makeIdentifier(pos, "#{op_text}@")
     u_arg = Call.new(pos, ua, op, [], nil)
     all_args = [u_arg]
     if op_args
