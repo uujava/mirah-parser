@@ -165,9 +165,9 @@ parser MirahParser {
   command: ($Super)=> $Super a=command_args -> ^(Super a nil)
            | op=operation a=command_args b=cmd_brace_block?-> ^(FunctionalCall op a b)
            | $Raise a=command_args -> ^(Raise a)
-           | t=value(primary) dot_or_colons op=operation2 a=command_args b=cmd_brace_block?-> ^(Call t op a b)
+           | t=value(primary) dot_or_colons op=operation2 a=command_args b=cmd_brace_block? cmd=-> ^(Call t op a b) {convert_brace_block(cmd)}
            | t=value(primary) ?{t.kind_of?(Call) and Call(t).parameters.size == 0} atgt={Call(t).target} aname={Call(t).name}  a=command_args b=cmd_brace_block?
-                                                     -> ^(Call atgt aname a b)
+                                                     cmd=-> ^(Call atgt aname a b) {convert_brace_block(cmd)}
            ;
 
   # Node:command - call with or without block on end [!null]
@@ -488,7 +488,7 @@ parser MirahParser {
   $Scope[@BEG]
   $Returns[Block]
   brace_block: $LBrace opt_nl (p=block_param !"statement" b=compstmt2 opt_nl $RBrace
-                              |p={nil} b=compstmt2 opt_nl $RBrace) -> ^(Block p b)
+                              |p={nil} b=compstmt2 opt_nl $RBrace) -> ^(Block p b true)
              | do_block;
 
   $Scope[@BEG]
@@ -1374,6 +1374,23 @@ parser MirahParser {
     all_args
   }
 
+  def convert_brace_block(call:Call) {
+    # fix for the case: 'a.call arg do;end'
+    # parsed as ^(Call a call [^(FunctionalCall arg [] b)] nil) instead of ^(Call a call [^(VCall arg)] b)
+    # So if last parameter if no arg FCall and has do_block move it to the parent call
+    unless call.block
+      last_idx = call.parameters.size - 1
+      if last_idx >= 0 and call.parameters.get(last_idx).kind_of? FunctionalCall
+         f_call = FunctionalCall(call.parameters.get(last_idx))
+         f_block = f_call.block
+         if f_call.parameters.size == 0 and f_block and !f_block.is_brace
+           call.parameters.set(last_idx, VCall.new(f_call.position, f_call.name))
+           call.block = f_block
+         end
+      end
+    end
+    call
+  }
 }
 
 parser EscapeParser {

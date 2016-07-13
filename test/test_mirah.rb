@@ -1245,4 +1245,23 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
     assert_parse('[Script, [[Call, [Self], [SimpleString, a], [[Call, [Call, [VCall, [SimpleString, b]], [SimpleString, -], [[VCall, [SimpleString, c]]], null], [SimpleString, -@], [], null]], [Block, null, []]]]]',
                  'self.a -b+c do;end')
   end
+
+  # Test different cases a-1 => a(-1) vs a - 1 => a - 1
+  # a-1 => (local a minus 1) handled at compiler infer time
+  def test_brace_vs_do_blocks
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, f_call], [[VCall, [SimpleString, arg]]], [Block, null, []]]]]',
+                 'f_call arg do;end')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, f_call], [[FunctionalCall, [SimpleString, f_arg], [[Hash]], null]], null]]]',
+                 'f_call f_arg {}')
+    assert_parse('[Script, [[FunctionalCall, [SimpleString, f_call], [[FunctionalCall, [SimpleString, f_arg], [], [Block, null, []]]], null]]]',
+                 'f_call f_arg {;}')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, call], [[FunctionalCall, [SimpleString, f_arg], [], [Block, null, []]]], null]]]',
+                 'a.call f_arg {;}')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, call], [[VCall, [SimpleString, arg]]], [Block, null, []]]]]',
+                 'a.call arg do;end')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, call], [[VCall, [SimpleString, arg]], [FunctionalCall, [SimpleString, f_arg], [], [Block, null, []]]], null]]]',
+                 'a.call arg, f_arg {;}')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, call], [[VCall, [SimpleString, arg1]], [VCall, [SimpleString, arg2]]], [Block, null, []]]]]',
+                 'a.call arg1, arg2 do;end')
+  end
 end

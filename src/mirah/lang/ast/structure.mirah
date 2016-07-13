@@ -30,6 +30,17 @@ class Block < NodeImpl
   def initialize(position:Position, arguments:Arguments, body:NodeList)
     initialize(position, arguments, java::util::Collections.emptyList)
     self.body = body
+    @is_brace = false
+  end
+
+  def initialize(position:Position, arguments:Arguments, body:NodeList, is_brace:boolean )
+    initialize(position, arguments, java::util::Collections.emptyList)
+    self.body = body
+    @is_brace = is_brace
+  end
+
+  def is_brace
+    @is_brace
   end
 end
 
