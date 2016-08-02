@@ -12,23 +12,14 @@ class ClassDefinition < NodeImpl
     child_list interfaces: TypeName
     child_list annotations: Annotation
     child_list modifiers: Modifier
-    child java_doc: Node
   end
 
   def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
-    initialize(p, name, super_class, body, interfaces, annotations, [], Node(nil))
+    initialize(p, name, super_class, body, interfaces, annotations, [])
   end
 
   def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
-      initialize(name, super_class, body, interfaces, annotations, [], Node(nil))
-  end
-
-  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
-    initialize(p, name, super_class, body, interfaces, annotations, modifiers, Node(nil))
-  end
-
-  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
-      initialize(name, super_class, body, interfaces, annotations, modifiers, Node(nil))
+      initialize(name, super_class, body, interfaces, annotations, [])
   end
 
 end
@@ -36,20 +27,12 @@ end
 class InterfaceDeclaration < ClassDefinition
   init_subclass(ClassDefinition)
 
-  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
-    initialize(p, name, super_class, body, interfaces, annotations, modifiers, Node(nil))
-  end
-
-  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
-      initialize(name, super_class, body, interfaces, annotations, modifiers, Node(nil))
-  end
-
   def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
-    initialize(p, name, super_class, body, interfaces, annotations, [], Node(nil))
+    initialize(p, name, super_class, body, interfaces, annotations, [])
   end
 
   def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
-      initialize(name, super_class, body, interfaces, annotations, [], Node(nil))
+      initialize(name, super_class, body, interfaces, annotations, [])
   end
 end
 
@@ -57,20 +40,12 @@ end
 class ClosureDefinition < ClassDefinition
   init_subclass(ClassDefinition)
 
-  def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
-    initialize(p, name, super_class, body, interfaces, annotations, modifiers, Node(nil))
-  end
-
-  def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List, modifiers: List)
-    initialize(name, super_class, body, interfaces, annotations, modifiers, Node(nil))
-  end
-
   def initialize(p:Position, name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
-    initialize(p, name, super_class, body, interfaces, annotations, [], Node(nil))
+    initialize(p, name, super_class, body, interfaces, annotations, [])
   end
 
   def initialize(name:Identifier, super_class: TypeName, body: List, interfaces: List, annotations: List)
-    initialize(name, super_class, body, interfaces, annotations, [], Node(nil))
+    initialize(name, super_class, body, interfaces, annotations, [])
   end
 end
 

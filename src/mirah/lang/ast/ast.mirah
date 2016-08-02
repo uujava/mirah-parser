@@ -48,12 +48,6 @@ interface Node < Cloneable do
 
   def findAncestor(type:Class):Node; end
   def findAncestor(filter:NodeFilter):Node; end
-  def findChild(filter:NodeFilter):List; end
-  def findChildren(filter:NodeFilter):List; end
-  def findChildren(filter:NodeFilter, list:List):List; end
-  def findDescendant(filter:NodeFilter):Node; end
-  def findDescendants(filter:NodeFilter):List; end
-  def findDescendants(filter:NodeFilter, list:List):List; end
   def clone:Object; end
 end
 
@@ -250,6 +244,22 @@ class NodeImpl implements Node
     @parent = nil
     @clone_listeners = LinkedList.new
   end
+
+  # return prev sibling if kind of JavaDoc
+  def java_doc:JavaDoc
+    return nil unless parent
+    return nil unless parent.kind_of?(Iterable)
+    p = Iterable(parent)
+    prev = nil
+    p.each do |child:Node|
+      break if child == self
+      prev = child
+    end
+    return nil unless prev
+    return nil unless prev.kind_of? JavaDoc
+    return JavaDoc(prev)
+  end
+
 end
 
 # class DescendentFinder < NodeScanner
