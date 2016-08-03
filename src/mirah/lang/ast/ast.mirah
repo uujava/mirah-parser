@@ -49,6 +49,8 @@ interface Node < Cloneable do
   def findAncestor(type:Class):Node; end
   def findAncestor(filter:NodeFilter):Node; end
   def clone:Object; end
+  # return prev sibling if kind of JavaDoc
+  def java_doc:JavaDoc; end
 end
 
 interface Assignment < Node do
@@ -246,9 +248,11 @@ class NodeImpl implements Node
   end
 
   # return prev sibling if kind of JavaDoc
+  # handle node replacement when parent.originalNode != nil
   def java_doc:JavaDoc
     return nil unless parent
     return nil unless parent.kind_of?(Iterable)
+    return parent.java_doc if parent.originalNode
     p = Iterable(parent)
     prev = nil
     p.each do |child:Node|
