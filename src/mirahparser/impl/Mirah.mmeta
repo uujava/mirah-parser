@@ -147,7 +147,7 @@ parser MirahParser {
   $Memo[Node]
   expr: a=( ($Not)=> $Not opt_nl e=expr node=-> ^(Not e) {Node(node)}
           | ($Bang)=> ($Bang e=command_call -> ^(Not e) | arg12)
-          | c=variable $Question opt_nl t=arg opt_nl $Colon opt_nl e=arg -> ^(If c [t] [e])
+          | c=variable $Question opt_nl COND t=arg opt_nl $Colon opt_nl e=arg -> ^(If c [t] [e])
           | command_call
           | arg
           )
@@ -530,7 +530,7 @@ parser MirahParser {
 
   $Memo[Node]
   $Scope[@BEG]
-  arg: h=arg0 ($Question opt_nl t=arg opt_nl $Colon opt_nl e=arg
+  arg: h=arg0 ($Question opt_nl COND t=arg opt_nl $Colon opt_nl e=arg
                h=-> ^(If h [t] [e]))* {h};
   $Returns[Node]
   arg0: ( l=var_lhs ( $AndEq! opt_nl r=arg
