@@ -1268,5 +1268,9 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  'a.call arg, f_arg {;}')
     assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, call], [[VCall, [SimpleString, arg1]], [VCall, [SimpleString, arg2]]], [Block, null, []]]]]',
                  'a.call arg1, arg2 do;end')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, call], [[Call, [VCall, [SimpleString, arg1]], [SimpleString, call1], [], [Block, null, []]]], null]]]',
+                 'a.call arg1.call1 {;}')
+    assert_parse('[Script, [[Call, [VCall, [SimpleString, a]], [SimpleString, call], [[Call, [VCall, [SimpleString, arg1]], [SimpleString, call1], [], null]], [Block, null, []]]]]',
+                 'a.call arg1.call1 do;end')
   end
 end

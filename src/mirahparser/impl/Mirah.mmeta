@@ -1374,14 +1374,18 @@ parser MirahParser {
   def convert_brace_block(call:Call) {
     # fix for the case: 'a.call arg do;end'
     # parsed as ^(Call a call [^(FunctionalCall arg [] b)] nil) instead of ^(Call a call [^(VCall arg)] b)
-    # So if last parameter if no arg FCall and has do_block move it to the parent call
+    # So if last parameter if no arg CallSite and has do_block move it to the parent call
     unless call.block
       last_idx = call.parameters.size - 1
-      if last_idx >= 0 and call.parameters.get(last_idx).kind_of? FunctionalCall
-         f_call = FunctionalCall(call.parameters.get(last_idx))
+      if last_idx >= 0 and call.parameters.get(last_idx).kind_of? CallSite
+         f_call = CallSite(call.parameters.get(last_idx))
          f_block = f_call.block
          if f_call.parameters.size == 0 and f_block and !f_block.is_brace
-           call.parameters.set(last_idx, VCall.new(f_call.position, f_call.name))
+           if f_call.kind_of? FunctionalCall
+             call.parameters.set(last_idx, VCall.new(f_call.position, f_call.name))
+           else
+             call.parameters.set(last_idx, Call.new(f_call.position, f_call.target, f_call.name, [], nil))
+           end
            call.block = f_block
          end
       end
