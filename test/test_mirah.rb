@@ -1249,6 +1249,10 @@ assert_parse("[Script, [[LocalAssignment, [SimpleString, a], [Rescue, [[VCall, [
                  'self.a -b+c do;end')
     assert_parse('[Script, [[If, [Boolean, true], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]], [[Fixnum, 1]]]]]',
                  'true ? -1 : 1')
+    assert_parse('[Script, [[If, [Boolean, true], [[Fixnum, 1]], [[Call, [Fixnum, 1], [SimpleString, -@], [], null]]], [FunctionalCall, [SimpleString, call], [], [Block, null, []]]]]',
+                 'true ? 1 : -1; call do;end')
+    assert_parse('[Script, [[If, [Boolean, true], [[Fixnum, 1]], [[Call, [FunctionalCall, [SimpleString, call], [], [Block, null, []]], [SimpleString, -@], [], null]]]]]',
+                 'true ? 1 : -call do;end')
   end
 
   # Test different cases a-1 => a(-1) vs a - 1 => a - 1

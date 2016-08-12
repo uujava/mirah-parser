@@ -147,7 +147,7 @@ parser MirahParser {
   $Memo[Node]
   expr: a=( ($Not)=> $Not opt_nl e=expr node=-> ^(Not e) {Node(node)}
           | ($Bang)=> ($Bang e=command_call -> ^(Not e) | arg12)
-          | c=variable $Question opt_nl COND t=arg opt_nl $Colon opt_nl e=arg -> ^(If c [t] [e])
+          | c=variable $Question opt_nl t=beg_arg opt_nl $Colon opt_nl e=beg_arg -> ^(If c [t] [e])
           | command_call
           | arg
           )
@@ -530,7 +530,11 @@ parser MirahParser {
 
   $Memo[Node]
   $Scope[@BEG]
-  arg: h=arg0 ($Question opt_nl COND t=arg opt_nl $Colon opt_nl e=arg
+  beg_arg: BEG arg;
+
+  $Memo[Node]
+  $Scope[@BEG]
+  arg: h=arg0 ($Question opt_nl t=beg_arg opt_nl $Colon opt_nl e=beg_arg
                h=-> ^(If h [t] [e]))* {h};
   $Returns[Node]
   arg0: ( l=var_lhs ( $AndEq! opt_nl r=arg
@@ -1308,22 +1312,6 @@ parser MirahParser {
       Node(LocalAccess.new(e.position, name))
     else
       raise IllegalArgumentException, "Unsupported node #{e.getClass}"
-    end
-  }
-
-  def signedFixnum(sign:String, f:Object) {
-    if sign.equals('-')
-      -Fixnum(f).value
-    else
-      Fixnum(f).value
-    end
-  }
-
-  def signedFloat(sign:String, f:Object) {
-    if sign.equals('-')
-      -Float(f).value
-    else
-      Float(f).value
     end
   }
 
